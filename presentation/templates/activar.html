@@ -1,0 +1,19 @@
+{% extends "acceso.html" %}{% block titulo %}Activar mi cuenta{% endblock %}
+{% block formulario %}
+<h1>Activar mi cuenta</h1>
+<p class="sub">Use el documento y el correo que la administración tiene registrados para su unidad. Si asiste como apoderado, use el documento con el que la recepción registró su poder y el correo con el que quiere ingresar.</p>
+<form method="post" action="/activar" class="pila">
+  {{ csrf_field }}
+  <label>Documento de identidad <input name="documento" required maxlength="20" inputmode="numeric" pattern="[0-9]+" autocomplete="off" data-mensaje="Escriba solo números, sin puntos ni espacios." value="{{ datos.documento or '' }}" autofocus></label>
+  <label>Correo electrónico <input type="email" name="email" required maxlength="120" autocomplete="username" data-mensaje="Escriba un correo con el formato nombre@dominio.com." value="{{ datos.email or '' }}"></label>
+  <div class="par">
+    <label>Contraseña <span class="ayuda">8 caracteres o más, con letras y números</span><input type="password" name="password" required minlength="8" maxlength="128" autocomplete="new-password" pattern="(?=.*[A-Za-z])(?=.*\d).{8,}" data-mensaje="Use 8 caracteres o más, con letras y números."></label>
+    <label>Repita la contraseña <span class="ayuda">Para evitar errores de escritura</span><input type="password" name="confirmacion" required maxlength="128" autocomplete="new-password" data-igual-a="password"></label>
+  </div>
+  <button>Activar cuenta</button>
+</form>
+<div class="cambio">
+  <p>¿Ya activó su cuenta? <a href="/login">Iniciar sesión</a></p>
+  <p class="tenue">Si sus datos no coinciden, acuda a la administración para que los actualice.</p>
+</div>
+{% endblock %}

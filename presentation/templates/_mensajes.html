@@ -1,0 +1,1 @@
+{% for m in mensajes %}<div class="aviso {{ m.tipo }}" role="{{ 'alert' if m.tipo == 'error' else 'status' }}">{{ m.mensaje }}</div>{% endfor %}

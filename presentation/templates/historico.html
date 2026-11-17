@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% block titulo %}Histórico{% endblock %}
+{% block contenido %}
+<div class="cabecera"><h1>Histórico de asambleas</h1></div>
+<div class="hoja" tabindex="0" role="region" aria-label="Histórico de asambleas">
+  <table>
+    <thead><tr><th class="num">N.º</th><th>Conjunto</th><th>Tipo</th><th>Fecha</th><th>Estado</th><th class="num">Quórum</th><th>Acta</th></tr></thead>
+    <tbody>
+    {% for a in asambleas %}<tr><td class="num">{{ a.id }}</td><td>{{ a.conjunto_nombre }}</td><td>{{ a.tipo|etiqueta }}{% if a.asamblea_original_id %}<br><span class="tenue">Segunda convocatoria</span>{% endif %}</td><td class="cifra">{{ a.fecha }}</td>
+    <td>{{ a.estado|chip }}</td><td class="num">{% if a.quorum_alcanzado is not none %}{{ a.quorum_alcanzado }} %{% else %}<span class="tenue">Sin medir</span>{% endif %}</td>
+    <td>{% if a.acta_id %}<a href="/actas/{{ a.acta_id }}">Ver acta</a>{% else %}<span class="tenue">{{ "Pendiente de aprobación" if a.acta_estado == "borrador" else "Sin acta" }}</span>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="7" class="vacio">Aún no hay asambleas finalizadas ni sin quórum. Aparecerán aquí cuando se cierre la primera.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

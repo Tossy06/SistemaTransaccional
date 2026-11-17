@@ -1,0 +1,58 @@
+{% extends "base.html" %}{% block titulo %}Asambleas{% endblock %}
+{% block contenido %}
+<div class="cabecera"><h1>Asambleas</h1></div>
+
+<div class="hoja" tabindex="0" role="region" aria-label="Asambleas">
+  <table>
+    <thead><tr><th class="num">N.º</th><th>Conjunto</th><th>Tipo</th><th>Fecha y hora</th><th>Estado</th><th class="num">Ingresaron</th><th class="num">Quórum</th><th class="num">Puntos votados</th><th><span class="oculto">Acciones</span></th></tr></thead>
+    <tbody>
+    {% for a in asambleas %}<tr>
+      <td class="num">{{ a.id }}</td>
+      <td>{{ a.conjunto_nombre }}{% if a.asamblea_original_id %}<br><span class="tenue">Segunda convocatoria de la n.º {{ a.asamblea_original_id }}</span>{% endif %}</td>
+      <td>{{ a.tipo|etiqueta }}<br><span class="tenue">{{ a.modalidad|etiqueta }}</span></td>
+      <td class="cifra">{{ a.fecha }} a las {{ a.hora.strftime('%H:%M') }}</td>
+      <td>{{ a.estado|chip }}</td>
+      <td class="num">{% if a.convocadas %}{{ a.ingresaron }} de {{ a.convocadas }}{% else %}<span class="tenue">Sin convocar</span>{% endif %}</td>
+      <td class="num">{{ a.quorum_alcanzado ~ ' %' if a.quorum_alcanzado is not none else '' }}{% if a.quorum_alcanzado is none %}<span class="tenue">Sin medir</span>{% endif %}</td>
+      <td class="num">{{ a.puntos_cerrados }} de {{ a.puntos }}</td>
+      <td class="acc">
+        {% if a.estado in ('convocada','en_curso') %}<a class="boton sec compacto" href="/asambleas/{{ a.id }}/asistencia">Registrar asistencia</a>{% endif %}
+        <a class="boton compacto" href="/asambleas/{{ a.id }}">Abrir</a>
+      </td>
+    </tr>
+    {% else %}<tr><td colspan="9" class="vacio">Todavía no hay asambleas.{% if 'administrador' in usuario.roles %} Programe la primera con el formulario de abajo.{% endif %}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if 'administrador' in usuario.roles %}
+<section class="mesa seccion">
+  <h2>Programar asamblea</h2>
+  {% if conjuntos %}
+  <form method="post" action="/asambleas" class="pila">{{ csrf_field }}
+    <div class="rejilla-campos">
+      <label class="doble">Conjunto <select name="conjunto_id" required>{% for c in conjuntos %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}</select></label>
+      <label>Tipo <span class="ayuda">La ordinaria exige 15 días de antelación</span><select name="tipo"><option value="ordinaria">Ordinaria</option><option value="extraordinaria">Extraordinaria</option></select></label>
+      <label>Fecha <input type="date" name="fecha" required></label>
+      <label>Hora <input type="time" name="hora" required></label>
+      <label>Modalidad <select name="modalidad" id="modalidad">
+        <option value="virtual">Virtual (sala web)</option>
+        <option value="mixta">Mixta (salón y sala web)</option>
+        <option value="presencial">Presencial</option></select></label>
+      <label class="doble lugar">Lugar <span class="ayuda">Solo para presencial o mixta</span><input name="lugar_modalidad" placeholder="Ejemplo: salón comunal"></label>
+      <label class="doble">Enlace de videollamada <span class="ayuda">Opcional. Meet, Zoom o Teams; debe empezar por https://</span><input type="url" name="enlace_videollamada" pattern="https://.*" placeholder="https://" data-mensaje="El enlace debe empezar por https://."></label>
+    </div>
+    <div><button>Programar asamblea</button></div>
+  </form>
+  {% else %}<p>Primero <a href="/conjuntos">registre un conjunto</a> para poder programar asambleas.</p>{% endif %}
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}<script>
+(() => {
+  const m = document.getElementById('modalidad'); if (!m) return;
+  const lugar = document.querySelector('.lugar'), campo = lugar.querySelector('input');
+  const v = () => { const virtual = m.value === 'virtual'; lugar.hidden = virtual; campo.required = !virtual; };
+  m.addEventListener('change', v); v();
+})();
+</script>{% endblock %}

@@ -1,0 +1,9 @@
+<div class="problema" role="alert">
+  <h1>No se pudo completar la operación</h1>
+  <p>{{ mensaje }}</p>
+  <div class="acciones" style="margin-top:20px">
+    <button type="button" class="sec" id="atras">Volver a la página anterior</button>
+    <a class="boton discreto" href="/">Ir al inicio</a>
+  </div>
+</div>
+<script>document.getElementById('atras').addEventListener('click',()=>history.back())</script>

@@ -1,0 +1,84 @@
+{% extends "base.html" %}{% block titulo %}En vivo, asamblea {{ asamblea.id }}{% endblock %}
+{% block contenido %}
+<a class="volver" href="/asambleas/{{ asamblea.id }}">Volver a la asamblea n.º {{ asamblea.id }}</a>
+<div class="cabecera">
+  <div>
+    <h1>Asamblea n.º {{ asamblea.id }} en vivo <span id="vivo-estado">{{ asamblea.estado|chip }}</span></h1>
+    <dl class="datos">
+      <div><dt>Conjunto</dt><dd>{{ asamblea.conjunto_nombre }}</dd></div>
+      <div><dt>Modalidad</dt><dd>{{ asamblea.modalidad|etiqueta }}</dd></div>
+      <div><dt>Puntos cerrados</dt><dd class="cifra" id="vivo-cerrados">{{ resultados|length }} de {{ puntos|length }}</dd></div>
+    </dl>
+  </div>
+</div>
+
+<section class="indicadores" aria-label="Indicadores de la asamblea">
+  <div><span class="valor cifra">{{ kpis.convocadas or kpis.unidades }}</span><span class="nombre">Unidades convocadas</span></div>
+  <div><span class="valor cifra">{{ kpis.ingresaron }}</span><span class="nombre">Ingresaron</span><span class="detalle">{{ kpis.presenciales }} en el salón, {{ kpis.virtuales }} por la sala, {{ kpis.por_poder }} por poder</span></div>
+  <div><span class="valor cifra">{{ kpis.puntos_cerrados }} de {{ kpis.puntos }}</span><span class="nombre">Puntos votados</span></div>
+  <div><span class="valor cifra">{{ kpis.participacion }} %</span><span class="nombre">Participación del punto abierto</span><span class="detalle">{{ kpis.votos_punto_abierto }} de {{ kpis.ingresaron }} presentes</span></div>
+</section>
+
+{% include "_quorum.html" %}
+
+<section class="votacion seccion" id="vivo-punto" data-punto="{{ punto.id if punto else '' }}">
+  {% if punto %}
+    <p class="tenue" style="margin:0">Votación abierta</p>
+    <p class="punto">Punto {{ punto.orden }}. {{ punto.descripcion }}</p>
+    <p class="tenue">Mayoría {{ punto.tipo_mayoria|etiqueta|lower }}. Los totales suman coeficientes; el resultado se calcula al cerrar.</p>
+    <div class="conteo">
+      {% for clave, texto, clase in (('a_favor', 'A favor', 'favor'), ('en_contra', 'En contra', 'contra'), ('abstencion', 'Abstención', 'abst')) %}
+      <div class="fila-conteo">
+        <span class="nombre">{{ texto }}</span>
+        <div class="pista-conteo"><div class="barra-conteo {{ clase }}" id="vivo-barra-{{ clave }}" style="width:{{ (votos[clave] / (conjunto.coeficiente_total|float) * 100)|round(1) }}%"></div></div>
+        <strong class="cifra" id="vivo-{{ clave }}">{{ '%.2f'|format(votos[clave]) }}</strong>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="lectura-conteo"><strong class="cifra" id="vivo-unidades">{{ votos.unidades }}</strong> de <span class="cifra" id="vivo-presentes">{{ quorum.unidades_presentes }}</span> unidades presentes ya votaron (<span class="cifra" id="vivo-participacion">{{ votos.participacion }}</span> %).</p>
+  {% else %}
+    <p class="espera" role="status">No hay ningún punto en votación. Abra uno desde la página de la asamblea.</p>
+  {% endif %}
+</section>
+
+<section class="seccion">
+  <h2>Orden del día</h2>
+  <div class="hoja" tabindex="0" role="region" aria-label="Resultados por punto">
+    <table>
+      <thead><tr><th class="num">Punto</th><th>Descripción</th><th>Estado</th><th>Resultado</th></tr></thead>
+      <tbody>
+      {% for p in puntos %}{% set r = resultados.get(p.id) %}
+      <tr><td class="num">{{ p.orden }}</td><td>{{ p.descripcion }}</td><td>{{ p.estado|chip }}</td>
+        <td>{% if r %}{{ r.resultado|chip }}<br><span class="tenue cifra">A favor {{ r.total_a_favor }}, en contra {{ r.total_en_contra }}, abstención {{ r.total_abstencion }}</span>{% else %}<span class="tenue">Sin votar</span>{% endif %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}{% include "_quorum_js.html" %}
+<script>
+(() => {
+  const total = {{ conjunto.coeficiente_total|float }};
+  const panel = document.getElementById('vivo-punto');
+  const $ = (id) => document.getElementById(id);
+  async function refrescar() {
+    try {
+      const r = await fetch('/api/asambleas/{{ asamblea.id }}/en-vivo', {credentials: 'same-origin'});
+      if (!r.ok) return;
+      const v = await r.json();
+      // Si se abrió o cerró un punto, se recarga para mostrar el nuevo estado completo.
+      if (String(v.punto ? v.punto.id : '') !== panel.dataset.punto) { location.reload(); return; }
+      if (!v.votos) return;
+      for (const k of ['a_favor', 'en_contra', 'abstencion']) {
+        $('vivo-' + k).textContent = v.votos[k].toFixed(2);
+        $('vivo-barra-' + k).style.width = Math.min(v.votos[k] / total * 100, 100) + '%';
+      }
+      $('vivo-unidades').textContent = v.votos.unidades;
+      $('vivo-presentes').textContent = v.quorum.unidades_presentes;
+      $('vivo-participacion').textContent = v.votos.participacion;
+    } catch (err) { /* se reintenta en el siguiente ciclo */ }
+  }
+  setInterval(refrescar, 3000);
+})();
+</script>{% endblock %}

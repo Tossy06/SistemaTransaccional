@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block cuerpo %}
+<div class="acceso {% block clase_acceso %}{% endblock %}">
+  <aside class="lema">
+    <a class="marca" href="/login">{% include "_marca.html" %}Asambleas PH</a>
+    <blockquote>Convoque, acredite asistentes, vote por coeficiente y apruebe el acta en una sola sesión.</blockquote>
+    <div>
+      <div class="muestra" aria-hidden="true">
+        <div class="pista"></div>
+        <p>La asamblea delibera cuando los presentes superan la mitad de los coeficientes.</p>
+      </div>
+      <p class="ley">Régimen de propiedad horizontal, Ley 675 de 2001.</p>
+    </div>
+  </aside>
+  <main class="formulario" id="contenido">
+    <div>
+      {% include "_mensajes.html" %}
+      {% block formulario %}{% endblock %}
+    </div>
+  </main>
+</div>
+{% endblock %}

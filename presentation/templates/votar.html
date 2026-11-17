@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% block titulo %}Votar{% endblock %}
+{% block contenido %}
+<div class="cabecera"><h1>Votación</h1></div>
+{% for s in salas %}<p class="aviso advertencia">Asamblea virtual de {{ s.conjunto_nombre }}: <a href="/sala/{{ s.token_acceso }}">entrar a la sala de la unidad {{ s.identificador }}</a>.</p>{% endfor %}
+{% for s in sesiones %}
+<section class="votacion">
+  <p class="tenue" style="margin:0">{{ s.asamblea.conjunto_nombre }}, asamblea n.º {{ s.asamblea.id }}</p>
+  {% if s.punto %}
+    <p class="punto">Punto {{ s.punto.orden }}. {{ s.punto.descripcion }}</p>
+    <p class="tenue">Requiere mayoría {{ s.punto.tipo_mayoria|etiqueta|lower }}.</p>
+    {% for u in s.unidades %}
+    <div class="unidad">
+      <div class="cual"><strong>{{ u.identificador }}</strong><span class="tenue">Coeficiente {{ u.coeficiente_al_momento }}, {{ u.tipo_asistencia|etiqueta|lower }}</span></div>
+      {% if u.ya_voto %}<span class="estado aprobado">Voto registrado</span>{% else %}
+      <form method="post" action="/votar/{{ s.punto.id }}" class="votos">{{ csrf_field }}<input type="hidden" name="unidad_id" value="{{ u.id }}">
+        <button class="favor" name="decision" value="a_favor">A favor</button>
+        <button class="contra" name="decision" value="en_contra">En contra</button>
+        <button class="sec" name="decision" value="abstencion">Me abstengo</button>
+      </form>{% endif %}
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="espera" role="status">Ningún punto está abierto a votación. Esta página se actualiza sola cuando la administración abra uno.</p>
+  {% endif %}
+</section>
+{% else %}
+<div class="mesa">
+  <p style="margin:0">No tiene unidades acreditadas en una asamblea en curso. Para votar, la recepción debe registrar su asistencia o el poder a su nombre.</p>
+</div>
+{% endfor %}
+{% endblock %}
+{% block scripts %}<script>if(!document.querySelector('form[action^="/votar/"]'))setTimeout(()=>location.reload(),8000);</script>{% endblock %}

@@ -1,0 +1,3 @@
+{% extends "base.html" %}{% block titulo %}No se pudo completar{% endblock %}
+{% block cuerpo %}{% if usuario %}{{ super() }}{% else %}<main id="contenido">{% include "_contenido_error.html" %}</main>{% endif %}{% endblock %}
+{% block contenido %}{% include "_contenido_error.html" %}{% endblock %}

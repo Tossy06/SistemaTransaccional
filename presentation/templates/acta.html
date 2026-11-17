@@ -1,0 +1,30 @@
+{% extends "base.html" %}{% block titulo %}Acta {{ acta.id }}{% endblock %}
+{% block contenido %}
+<a class="volver no-imprimir" href="/asambleas/{{ asamblea.id }}">Volver a la asamblea n.º {{ asamblea.id }}</a>
+<div class="cabecera no-imprimir">
+  <h1>Acta de la asamblea n.º {{ asamblea.id }} {{ acta.estado|chip }}</h1>
+  <div class="acciones">
+    {% set ya = aprobaciones|map(attribute='rol_en_aprobacion')|list %}
+    {% if acta.estado == 'borrador' %}{% for rol in ('presidente','secretario') %}{% if rol in usuario.roles and rol not in ya %}
+      <form method="post" action="/actas/{{ acta.id }}/aprobar" class="inline">{{ csrf_field }}<input type="hidden" name="rol" value="{{ rol }}"><button>Aprobar como {{ rol }}</button></form>
+    {% endif %}{% endfor %}{% endif %}
+    <a class="boton sec" href="/actas/{{ acta.id }}/descargar">Descargar (.txt)</a>
+    <button class="sec" type="button" id="imprimir">Imprimir o guardar PDF</button>
+  </div>
+</div>
+
+<div class="integridad no-imprimir">
+  <div>
+    <h2>Integridad {% if integra %}<span class="estado aprobado">Verificada</span>{% else %}<span class="estado alterada">Alterada</span>{% endif %}</h2>
+    <p style="margin:6px 0 0">{% if integra %}El contenido coincide con la huella registrada al generar el acta.{% else %}El contenido no coincide con la huella registrada: el acta fue modificada después de generarse.{% endif %}</p>
+    <p class="hash" title="Huella SHA-256">SHA-256 {{ acta.hash }}</p>
+  </div>
+  <div>
+    <h2>Aprobaciones</h2>
+    <ul class="firmas">{% for a in aprobaciones %}<li><strong>{{ a.rol_en_aprobacion|capitalize }}</strong>: {{ a.nombre }}, <span class="cifra">{{ a.fecha.strftime('%Y-%m-%d %H:%M') }}</span></li>{% else %}<li class="tenue">Pendiente la aprobación del presidente y del secretario.</li>{% endfor %}</ul>
+  </div>
+</div>
+
+<article class="documento"><pre>{{ acta.contenido }}</pre></article>
+{% endblock %}
+{% block scripts %}<script>document.getElementById('imprimir').addEventListener('click',()=>window.print())</script>{% endblock %}

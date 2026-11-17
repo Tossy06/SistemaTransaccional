@@ -1,0 +1,108 @@
+{% extends "base.html" %}{% block titulo %}Sala de la asamblea{% endblock %}
+{% set a = asamblea %}{% set cv = convocatoria %}
+{# Quien entra con su enlace no necesita cuenta: sin sesión, la sala se muestra sin el menú lateral. #}
+{% block cuerpo %}{% if usuario %}{{ super() }}{% else %}
+<div class="sala-publica">
+  <header class="barra-movil"><span class="marca">{% include "_marca.html" %}Asambleas PH</span></header>
+  <main id="contenido">
+    {% include "_mensajes.html" %}
+    {{ self.contenido() }}
+  </main>
+</div>
+<dialog id="confirmar" class="confirmacion" aria-labelledby="confirmar-titulo" aria-describedby="confirmar-detalle">
+  <h2 id="confirmar-titulo"></h2>
+  <p id="confirmar-detalle" class="tenue"></p>
+  <form method="dialog" class="acciones">
+    <button value="cancelar" class="sec" autofocus>Cancelar</button>
+    <button value="confirmar">Confirmar</button>
+  </form>
+</dialog>
+{% endif %}{% endblock %}
+{% block contenido %}
+<div class="cabecera">
+  <div>
+    <h1>Sala de la asamblea {{ a.estado|chip }}</h1>
+    <dl class="datos">
+      <div><dt>Conjunto</dt><dd>{{ a.conjunto_nombre }}</dd></div>
+      <div><dt>Fecha</dt><dd class="cifra">{{ a.fecha }} a las {{ a.hora.strftime('%H:%M') }}</dd></div>
+      <div><dt>Unidad</dt><dd>{{ cv.identificador }}</dd></div>
+      <div><dt>Representa</dt><dd>{{ representante }} ({{ calidad }})</dd></div>
+      <div><dt>Modalidad</dt><dd>{{ a.modalidad|etiqueta }}</dd></div>
+    </dl>
+  </div>
+  {% if a.enlace_videollamada %}<a class="boton sec" href="{{ a.enlace_videollamada }}" target="_blank" rel="noopener noreferrer">Abrir la videollamada</a>{% endif %}
+</div>
+
+{% if a.estado in ('convocada', 'en_curso') and not ingreso %}
+<section class="ingreso">
+  <h2>Confirme su ingreso</h2>
+  <p>Al confirmar, la unidad {{ cv.identificador }} queda registrada como asistente{% if calidad == 'apoderado' %} por poder{% endif %} y su coeficiente cuenta para el quórum. Desde ese momento puede votar los puntos que abra la administración.</p>
+  <form method="post" action="/sala/{{ token }}/ingresar">{{ csrf_field }}<button>Confirmar mi ingreso</button></form>
+</section>
+{% elif ingreso %}
+<p class="aviso ok" role="status"><span>Ingreso registrado a las {{ ingreso.hora_registro.strftime('%H:%M') }}{% if ingreso.tipo_asistencia == 'poder' %} como apoderado{% endif %}. Coeficiente {{ ingreso.coeficiente_al_momento }}.</span></p>
+{% endif %}
+
+{% include "_quorum.html" %}
+
+<section class="votacion seccion" id="votacion" aria-live="polite">
+  {% if a.estado in ('finalizada', 'sin_quorum') %}
+    <p class="punto" style="margin-top:0">La asamblea terminó.</p>
+    <p class="tenue">Cuando se apruebe el acta podrá consultarla en el <a href="/historico">histórico</a>.</p>
+  {% elif punto %}
+    <p class="tenue" style="margin:0">Votación abierta</p>
+    <p class="punto">Punto {{ punto.orden }}. {{ punto.descripcion }}</p>
+    <p class="tenue">Requiere mayoría {{ punto.tipo_mayoria|etiqueta|lower }}.</p>
+    {% if not ingreso %}
+      <p class="aviso advertencia">Confirme su ingreso arriba para poder votar este punto.</p>
+    {% elif ya_voto %}
+      <p><span class="estado aprobado">Voto registrado</span> El voto quedó guardado con la unidad y la hora; no se puede cambiar.</p>
+    {% else %}
+      <form method="post" action="/sala/{{ token }}/votar" class="votos">{{ csrf_field }}
+        <button class="favor" name="decision" value="a_favor" data-confirmar="¿Votar a favor del punto {{ punto.orden }}?" data-detalle="El voto se registra con el coeficiente de {{ cv.identificador }} y no se puede cambiar.">A favor</button>
+        <button class="contra" name="decision" value="en_contra" data-confirmar="¿Votar en contra del punto {{ punto.orden }}?" data-detalle="El voto se registra con el coeficiente de {{ cv.identificador }} y no se puede cambiar.">En contra</button>
+        <button class="sec" name="decision" value="abstencion" data-confirmar="¿Abstenerse en el punto {{ punto.orden }}?" data-detalle="La abstención se registra y no se puede cambiar.">Me abstengo</button>
+      </form>
+    {% endif %}
+  {% else %}
+    <p class="espera" role="status">{% if a.estado == 'convocada' %}La asamblea aún no ha comenzado. Esta sala se actualiza sola cuando la administración la inicie.{% else %}Esperando que la administración abra el siguiente punto.{% endif %}</p>
+  {% endif %}
+</section>
+
+<section class="seccion">
+  <h2>Orden del día</h2>
+  <ol class="orden-sala">
+    {% for p in puntos %}{% set r = resultados.get(p.id) %}
+    <li><span>{{ p.descripcion }}</span> {% if r %}{{ r.resultado|chip }}{% elif p.estado == 'abierto' %}<span class="estado abierto">En votación</span>{% endif %}</li>
+    {% endfor %}
+  </ol>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  // Igual que la sala de Odoo: consulta el estado y recarga cuando cambia algo relevante.
+  let previo = null;
+  async function revisar() {
+    try {
+      const r = await fetch('/api/sala/{{ token }}/estado', {credentials: 'same-origin'});
+      if (!r.ok) return;
+      const e = await r.json();
+      // Quórum en vivo (la sala no necesita sesión, por eso se actualiza con su propio enlace).
+      const q = e.quorum, el = (id) => document.getElementById(id);
+      if (el('q-porc')) {
+        el('q-porc').textContent = q.porcentaje.toFixed(2);
+        el('q-unid').textContent = q.unidades_presentes;
+        el('q-barra').style.width = Math.min(q.porcentaje, 100) + '%';
+        el('q-estado').textContent = q.hay_quorum ? 'Hay quórum para deliberar' : 'Aún no hay quórum';
+        el('q-estado').classList.toggle('no', !q.hay_quorum);
+      }
+      const clave = [e.estado, e.punto_id, e.ya_voto, e.ingresado].join('|');
+      if (previo !== null && clave !== previo && !document.querySelector('dialog[open]')) location.reload();
+      previo = clave;
+    } catch (err) { /* sin conexión: se reintenta en el siguiente ciclo */ }
+  }
+  revisar();
+  setInterval(revisar, 4000);
+})();
+</script>{% endblock %}

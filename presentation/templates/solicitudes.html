@@ -1,0 +1,49 @@
+{% extends "base.html" %}{% block titulo %}Solicitudes de registro{% endblock %}
+{% block contenido %}
+{% set pendientes = solicitudes|selectattr('estado', 'equalto', 'pendiente')|list %}
+<a class="volver" href="/conjuntos/{{ conjunto.id }}">Volver a {{ conjunto.nombre }}</a>
+<div class="cabecera">
+  <div>
+    <h1>Solicitudes de registro</h1>
+    <p class="tenue" style="margin:8px 0 0">{{ pendientes|length }} {{ 'pendiente' if pendientes|length == 1 else 'pendientes' }} de revisión. Al aprobar, los datos pasan al censo de la unidad y reemplazan los anteriores.</p>
+  </div>
+</div>
+
+<div class="hoja" tabindex="0" role="region" aria-label="Solicitudes de registro">
+  <table>
+    <thead><tr><th>Unidad</th><th>Datos enviados</th><th>Datos actuales en el censo</th><th>Revisión</th><th><span class="oculto">Acciones</span></th></tr></thead>
+    <tbody>
+    {% for s in solicitudes %}
+    <tr>
+      <td><strong>{{ s.identificador }}</strong><br><span class="tenue cifra">{{ s.fecha_envio.strftime('%Y-%m-%d %H:%M') }}</span></td>
+      <td>{{ s.nombre }}<br><span class="tenue cifra">{{ s.documento }}</span><br><span class="tenue">{{ s.email }}{% if s.telefono %}, {{ s.telefono }}{% endif %}</span></td>
+      <td>{{ s.propietario_nombre }}<br><span class="tenue cifra">{{ s.propietario_documento }}</span><br><span class="tenue">{{ s.propietario_email or 'Sin correo' }}</span></td>
+      <td>
+        {% if s.estado == 'pendiente' %}
+          {% if s.coincide %}<span class="estado aprobado">Mismo documento del censo</span>
+          {% else %}<span class="estado borrador">Documento distinto</span>
+            <br><span class="tenue">{% if s.representante_con_cuenta %}El representante actual ya tiene cuenta: aprobar lo reemplaza. Verifique la escritura o el certificado de tradición.{% else %}Verifique que sea el nuevo propietario.{% endif %}</span>
+          {% endif %}
+        {% elif s.estado == 'aprobada' %}<span class="estado aprobado">Aprobada</span><br><span class="tenue">{{ s.revisor }}, <span class="cifra">{{ s.fecha_revision.strftime('%Y-%m-%d') }}</span></span>
+        {% else %}<span class="estado rechazado">Rechazada</span><br><span class="tenue">{{ s.motivo_rechazo }}</span>{% endif %}
+      </td>
+      <td class="acc">
+        {% if s.estado == 'pendiente' %}
+        <form method="post" action="/solicitudes/{{ s.id }}/aprobar" class="inline">{{ csrf_field }}<input type="hidden" name="conjunto_id" value="{{ conjunto.id }}"><button class="compacto">Aprobar</button></form>
+        <button type="button" class="discreto compacto" data-abre="rechazar-{{ s.id }}">Rechazar</button>
+        <dialog id="rechazar-{{ s.id }}" class="confirmacion" aria-labelledby="rechazar-{{ s.id }}-titulo">
+          <h2 id="rechazar-{{ s.id }}-titulo">Rechazar la solicitud de {{ s.identificador }}</h2>
+          <p class="tenue">{{ s.nombre }}, documento {{ s.documento }}. La persona deberá enviar una nueva solicitud con los datos correctos.</p>
+          <form method="post" action="/solicitudes/{{ s.id }}/rechazar" class="pila">{{ csrf_field }}<input type="hidden" name="conjunto_id" value="{{ conjunto.id }}">
+            <label>Motivo del rechazo <input name="motivo" required maxlength="300" autofocus data-mensaje-vacio="Escriba el motivo para que quede en el registro."></label>
+            <div class="acciones invertidas"><button type="submit" class="peligro">Rechazar solicitud</button><button type="submit" formmethod="dialog" formnovalidate class="sec">Cancelar</button></div>
+          </form>
+        </dialog>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}<tr><td colspan="5" class="vacio">Todavía no llegan solicitudes. Abra el formulario en la página del conjunto y comparta el enlace con los propietarios.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

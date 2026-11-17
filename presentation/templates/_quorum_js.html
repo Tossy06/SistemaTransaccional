@@ -1,0 +1,21 @@
+<script>
+(function(){
+  const p = document.getElementById('panel-quorum'); if(!p) return;
+  const $ = id => document.getElementById(id);
+  async function refrescar(){
+    try{
+      const r = await fetch('/api/asambleas/' + p.dataset.asamblea + '/quorum', {credentials:'same-origin'});
+      if(!r.ok) return;
+      const q = await r.json();
+      $('q-porc').textContent = q.porcentaje.toFixed(2);
+      $('q-unid').textContent = q.unidades_presentes;
+      $('q-barra').style.width = Math.min(q.porcentaje, 100) + '%';
+      $('q-medidor').setAttribute('aria-valuenow', q.porcentaje);
+      const e = $('q-estado');
+      e.textContent = q.hay_quorum ? 'Hay quórum para deliberar' : 'Aún no hay quórum';
+      e.classList.toggle('no', !q.hay_quorum);
+    }catch(err){ /* sin conexión: se conserva el último dato y se reintenta */ }
+  }
+  setInterval(refrescar, 5000);
+})();
+</script>

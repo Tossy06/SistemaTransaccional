@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% block titulo %}Inicio{% endblock %}
+{% set roles = usuario.roles %}
+{% block contenido %}
+<div class="cabecera"><div><h1>Hola, {{ usuario.nombre }}</h1><p class="tenue" style="margin:8px 0 0">¿Qué necesita hacer hoy?</p></div></div>
+{% if salas %}
+<section class="salas">
+  <h2>Asambleas virtuales</h2>
+  <ul class="tareas">
+    {% for s in salas %}<li class="principal"><a href="/sala/{{ s.token_acceso }}"><span class="titulo">Entrar a la sala: {{ s.conjunto_nombre }}</span><span class="desc">Unidad {{ s.identificador }} como {{ s.calidad }}. {{ s.fecha }} a las {{ s.hora.strftime('%H:%M') }}, asamblea {{ s.estado|etiqueta|lower }}.</span><span class="ir">Entrar</span></a></li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+<ul class="tareas">
+  {% if 'administrador' in roles %}
+  <li class="principal"><a href="/asambleas"><span class="titulo">Conducir una asamblea</span><span class="desc">Orden del día, convocatoria, quórum, votaciones y acta.</span><span class="ir">Ir a asambleas</span></a></li>
+  <li><a href="/conjuntos"><span class="titulo">Conjuntos y unidades</span><span class="desc">Unidades privadas, propietarios y coeficientes de copropiedad.</span><span class="ir">Abrir</span></a></li>
+  <li><a href="/usuarios"><span class="titulo">Usuarios</span><span class="desc">Crear cuentas, asignar roles y desactivar accesos.</span><span class="ir">Abrir</span></a></li>
+  {% elif 'recepcionista' in roles %}
+  <li class="principal"><a href="/asambleas"><span class="titulo">Registrar asistencia</span><span class="desc">Acreditar propietarios y poderes en las asambleas convocadas.</span><span class="ir">Ir a asambleas</span></a></li>
+  {% endif %}
+  {% if 'copropietario' in roles or 'apoderado' in roles %}
+  <li {% if 'administrador' not in roles and 'recepcionista' not in roles %}class="principal"{% endif %}><a href="/votar"><span class="titulo">Votar</span><span class="desc">Emitir el voto de las unidades que representa en la asamblea en curso.</span><span class="ir">Ir a votar</span></a></li>
+  {% endif %}
+  <li><a href="/historico"><span class="titulo">Histórico</span><span class="desc">Asambleas anteriores, su quórum y sus actas.</span><span class="ir">Consultar</span></a></li>
+  <li><a href="/cuenta"><span class="titulo">Mi cuenta</span><span class="desc">Sus datos y el cambio de contraseña.</span><span class="ir">Abrir</span></a></li>
+</ul>
+{% endblock %}

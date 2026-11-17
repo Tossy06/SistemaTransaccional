@@ -1,0 +1,69 @@
+{% extends "base.html" %}{% block titulo %}Asistencia{% endblock %}
+{% block contenido %}
+<a class="volver" href="/asambleas/{{ asamblea.id }}">Volver a la asamblea n.º {{ asamblea.id }}</a>
+<div class="cabecera">
+  <div>
+    <h1>{{ 'Poderes y asistencia' if asamblea.modalidad == 'virtual' else 'Registro de asistencia' }} {{ asamblea.estado|chip }}</h1>
+    <dl class="datos"><div><dt>Conjunto</dt><dd>{{ asamblea.conjunto_nombre }}</dd></div><div><dt>Fecha</dt><dd class="cifra">{{ asamblea.fecha }}</dd></div></dl>
+  </div>
+</div>
+{% include "_quorum.html" %}
+
+{% if asamblea.estado in ('convocada','en_curso') and asamblea.modalidad != 'presencial' %}
+<section class="mesa seccion">
+  <h2>Registrar poder para la sala virtual</h2>
+  <p>El apoderado ingresa a la sala con su propia cuenta y su ingreso es el que cuenta para el quórum. Se admite un solo poder por unidad.</p>
+  {% if pendientes %}
+  <form method="post" action="/asambleas/{{ asamblea.id }}/poderes" class="pila">{{ csrf_field }}
+    <div class="rejilla-campos">
+      <label class="doble">Unidad <select name="unidad_id" required>{% for u in pendientes %}<option value="{{ u.id }}">{{ u.identificador }}, {{ u.propietario_nombre }}</option>{% endfor %}</select></label>
+      <label>Nombre del apoderado <input name="apoderado_nombre" required autocomplete="off"></label>
+      <label>Documento del apoderado <input name="apoderado_documento" required inputmode="numeric" pattern="[0-9]+" autocomplete="off" data-mensaje="Escriba solo números, sin puntos ni espacios."></label>
+    </div>
+    <div><button>Registrar poder</button></div>
+  </form>
+  {% else %}<p style="margin:0">Todas las unidades activas ya registraron su asistencia.</p>{% endif %}
+</section>
+{% endif %}
+
+{% if asamblea.estado in ('convocada','en_curso') and asamblea.modalidad != 'virtual' %}
+<section class="mesa seccion">
+  <h2>Acreditar unidad en el salón</h2>
+  {% if pendientes %}
+  <form method="post" class="pila">{{ csrf_field }}
+    <div class="rejilla-campos">
+      <label class="doble">Unidad <select name="unidad_id" required>{% for u in pendientes %}<option value="{{ u.id }}">{{ u.identificador }}, {{ u.propietario_nombre }} (coef. {{ u.coeficiente_copropiedad }})</option>{% endfor %}</select></label>
+      <label>Quién asiste <select name="tipo_asistencia" id="tipo"><option value="presencial">El propietario</option><option value="poder">Un apoderado</option></select></label>
+      <label class="poder">Nombre del apoderado <input name="apoderado_nombre" autocomplete="off"></label>
+      <label class="poder">Documento del apoderado <input name="apoderado_documento" inputmode="numeric" autocomplete="off"></label>
+    </div>
+    <div><button>Registrar asistencia</button></div>
+  </form>
+  <p class="nota">Se admite un solo poder por unidad. La asistencia, el poder y el nuevo quórum se guardan juntos: si algo falla, no se guarda nada.</p>
+  {% else %}<p style="margin:0">Todas las unidades activas ya están acreditadas.</p>{% endif %}
+</section>
+{% endif %}
+
+<section class="seccion">
+  <h2>Unidades acreditadas <span class="tenue cifra" style="font-weight:400">({{ registrados|length }})</span></h2>
+  <div class="hoja" tabindex="0" role="region" aria-label="Unidades acreditadas">
+    <table>
+      <thead><tr><th>Unidad</th><th>Propietario</th><th>Asiste</th><th>Apoderado</th><th class="num">Coeficiente</th><th class="num">Hora</th></tr></thead>
+      <tbody>
+      {% for r in registrados %}<tr><td>{{ r.identificador }}</td><td>{{ r.propietario_nombre }}</td><td>{{ r.tipo_asistencia|etiqueta }}</td>
+      <td>{% if r.apoderado_nombre %}{{ r.apoderado_nombre }} <span class="tenue cifra">({{ r.apoderado_documento }})</span>{% else %}<span class="tenue">No aplica</span>{% endif %}</td>
+      <td class="num">{{ r.coeficiente_al_momento }}</td><td class="num">{{ r.hora_registro.strftime('%H:%M:%S') }}</td></tr>
+      {% else %}<tr><td colspan="6" class="vacio">Aún no se ha acreditado ninguna unidad.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}{% include "_quorum_js.html" %}
+<script>
+(function(){
+  const t=document.getElementById('tipo'); if(!t) return;
+  function v(){const p=t.value==='poder';document.querySelectorAll('.poder').forEach(e=>{e.hidden=!p;e.querySelector('input').required=p})}
+  t.addEventListener('change',v); v();
+})();
+</script>{% endblock %}

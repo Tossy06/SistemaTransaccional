@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="text-scale" content="scale">
+  <meta name="color-scheme" content="light">
+  <title>{% block titulo %}Asambleas{% endblock %} | Asambleas PH</title>
+  <link rel="preload" href="/static/fuentes/atkinson-hyperlegible-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/estilos.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+{% block cuerpo %}
+<a class="saltar" href="#contenido">Ir al contenido</a>
+{% set ruta = request.url.path %}
+{% macro enlace(url, texto) %}<li><a href="{{ url }}"{% if ruta == url or (url != '/' and ruta.startswith(url)) %} aria-current="page"{% endif %}>{{ texto }}</a></li>{% endmacro %}
+<div class="app">
+  <header class="barra-movil">
+    <a class="marca" href="/">{% include "_marca.html" %}Asambleas PH</a>
+    <button type="button" class="boton-menu compacto" id="drawer-open" aria-expanded="false" aria-controls="drawer">Menú</button>
+  </header>
+
+  <!-- Barra lateral en escritorio; cajón deslizable en pantallas angostas (guía navigation-drawer).
+       popover="manual" y role="dialog" solo actúan como cajón; app.js quita el role en escritorio. -->
+  <aside class="Drawer" id="drawer" popover="manual" role="dialog" aria-label="Menú principal">
+    <div class="Drawer-scroller">
+      <div class="Drawer-sheet">
+        <button type="button" class="cerrar-menu compacto" id="drawer-close" autofocus>Cerrar menú</button>
+        <a class="marca" href="/">{% include "_marca.html" %}Asambleas PH</a>
+        <nav aria-label="Principal">
+          <ul class="nav">
+            {{ enlace('/', 'Inicio') }}
+            {% if 'administrador' in usuario.roles or 'recepcionista' in usuario.roles %}{{ enlace('/asambleas', 'Asambleas') }}{% endif %}
+            {% if 'administrador' in usuario.roles %}{{ enlace('/conjuntos', 'Conjuntos y unidades') }}{{ enlace('/usuarios', 'Usuarios') }}{% endif %}
+            {% if 'copropietario' in usuario.roles or 'apoderado' in usuario.roles %}{{ enlace('/votar', 'Votar') }}{% endif %}
+            {{ enlace('/historico', 'Histórico') }}
+          </ul>
+        </nav>
+        <div class="cuenta-lateral">
+          <a href="/cuenta"{% if ruta == '/cuenta' %} aria-current="page"{% endif %}><strong>{{ usuario.nombre }}</strong><span>{{ usuario.roles|roles_texto }}</span></a>
+          <form method="post" action="/logout">{{ csrf_field }}<button class="compacto">Cerrar sesión</button></form>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main id="contenido">
+    {% include "_mensajes.html" %}
+    {% block contenido %}{% endblock %}
+  </main>
+</div>
+<dialog id="confirmar" class="confirmacion" aria-labelledby="confirmar-titulo" aria-describedby="confirmar-detalle">
+  <h2 id="confirmar-titulo"></h2>
+  <p id="confirmar-detalle" class="tenue"></p>
+  <form method="dialog" class="acciones">
+    <button value="cancelar" class="sec" autofocus>Cancelar</button>
+    <button value="confirmar">Confirmar</button>
+  </form>
+</dialog>
+{% endblock %}
+{% block scripts %}{% endblock %}
+</body>
+</html>

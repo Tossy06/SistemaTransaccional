@@ -1,0 +1,84 @@
+{% extends "base.html" %}{% block titulo %}{{ conjunto.nombre }}{% endblock %}
+{% block contenido %}
+<a class="volver" href="/conjuntos">Todos los conjuntos</a>
+<div class="cabecera">
+  <div>
+    <h1>{{ conjunto.nombre }}</h1>
+    <dl class="datos">
+      <div><dt>NIT</dt><dd class="cifra">{{ conjunto.nit }}</dd></div>
+      {% if conjunto.direccion or conjunto.ciudad %}<div><dt>Dirección</dt><dd>{{ conjunto.direccion or '' }}{% if conjunto.direccion and conjunto.ciudad %}, {% endif %}{{ conjunto.ciudad or '' }}</dd></div>{% endif %}
+      <div><dt>Coeficientes activos</dt><dd class="cifra">{{ suma }} de {{ conjunto.coeficiente_total }}</dd></div>
+    </dl>
+  </div>
+</div>
+{% if suma != conjunto.coeficiente_total %}<div class="aviso advertencia">La suma de coeficientes de las unidades activas ({{ suma }}) todavía no coincide con el total del conjunto ({{ conjunto.coeficiente_total }}). El quórum se calcula sobre ese total.</div>{% endif %}
+
+<div class="hoja" tabindex="0" role="region" aria-label="Unidades del conjunto">
+  <table>
+    <thead><tr><th>Unidad</th><th>Propietario</th><th>Documento</th><th>Correo</th><th class="num">Coeficiente</th><th>Estado</th><th><span class="oculto">Acciones</span></th></tr></thead>
+    <tbody>
+    {% for u in unidades %}<tr>
+      <td><strong>{{ u.identificador }}</strong></td><td>{{ u.propietario_nombre }}</td><td class="cifra">{{ u.propietario_documento }}</td><td>{{ u.propietario_email or '' }}{% if not u.propietario_email %}<span class="tenue">Sin correo</span>{% endif %}</td><td class="num">{{ u.coeficiente_copropiedad }}</td>
+      <td>{% if u.activo %}<span class="estado activo">Activa</span>{% else %}<span class="estado inactivo">Inactiva</span>{% endif %}</td>
+      <td class="acc"><form method="post" action="/unidades/{{ u.id }}/activo" class="inline">{{ csrf_field }}<input type="hidden" name="activo" value="{{ '0' if u.activo else '1' }}"><button class="discreto compacto">{{ 'Desactivar' if u.activo else 'Activar' }}</button></form></td>
+    </tr>
+    {% else %}<tr><td colspan="7" class="vacio">Este conjunto aún no tiene unidades. Registre la primera abajo.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<section class="mesa seccion" id="formulario">
+  <h2>Formulario de registro para propietarios</h2>
+  <p>Comparta un enlace, por WhatsApp o correo, para que cada propietario registre su documento, correo y teléfono. Las solicitudes llegan a revisión y solo cuentan en el censo cuando usted las aprueba.</p>
+  {% if enlace_formulario %}
+  <div class="enlace">
+    <input id="enlace" value="{{ enlace_formulario }}" readonly aria-label="Enlace del formulario">
+    <button type="button" class="sec" id="copiar">Copiar enlace</button>
+  </div>
+  <div class="acciones" style="margin-top:14px">
+    <a class="boton" href="/conjuntos/{{ conjunto.id }}/solicitudes">Revisar solicitudes{% if pendientes %} ({{ pendientes }} {{ 'pendiente' if pendientes == 1 else 'pendientes' }}){% endif %}</a>
+    <form method="post" action="/conjuntos/{{ conjunto.id }}/formulario" class="inline">{{ csrf_field }}<input type="hidden" name="accion" value="cerrar"><button class="discreto" data-confirmar="¿Cerrar el formulario de registro?" data-detalle="El enlace compartido dejará de recibir solicitudes. Puede abrir uno nuevo cuando quiera.">Cerrar formulario</button></form>
+  </div>
+  {% else %}
+  <div class="acciones">
+    <form method="post" action="/conjuntos/{{ conjunto.id }}/formulario" class="inline">{{ csrf_field }}<input type="hidden" name="accion" value="abrir"><button>Abrir formulario</button></form>
+    <a class="boton sec" href="/conjuntos/{{ conjunto.id }}/solicitudes">Ver solicitudes{% if pendientes %} ({{ pendientes }} {{ 'pendiente' if pendientes == 1 else 'pendientes' }}){% endif %}</a>
+  </div>
+  {% endif %}
+</section>
+
+<section class="mesa seccion">
+  <h2>Cargar el censo desde Excel o CSV</h2>
+  <p>Registre todas las unidades de una vez con el archivo de propietarios que ya maneja la administración. Columnas: identificador, propietario, documento, correo, teléfono y coeficiente.</p>
+  <form method="post" action="/conjuntos/{{ conjunto.id }}/importar" enctype="multipart/form-data" class="fila">{{ csrf_field }}
+    <label class="ancho">Archivo (.xlsx o .csv, máximo 2 MB) <input type="file" name="archivo" accept=".xlsx,.csv" required></label>
+    <button>Cargar unidades</button>
+    <a class="boton sec" href="/conjuntos/plantilla-unidades.xlsx">Descargar plantilla</a>
+  </form>
+  <p class="nota">Se revisan todas las filas antes de guardar. Si una sola tiene un error, no se registra ninguna y se indica qué corregir.</p>
+</section>
+
+<section class="mesa seccion">
+  <h2>Registrar una unidad</h2>
+  <form method="post" action="/conjuntos/{{ conjunto.id }}/unidades" class="pila">{{ csrf_field }}
+    <div class="rejilla-campos">
+      <label>Identificador <input name="identificador" placeholder="Ejemplo: Apto 101" required></label>
+      <label>Coeficiente (%) <input name="coeficiente" required inputmode="decimal"></label>
+      <label class="doble">Propietario <input name="propietario_nombre" required></label>
+      <label>Documento <input name="propietario_documento" required inputmode="numeric"></label>
+      <label>Teléfono <input name="propietario_telefono" inputmode="tel"></label>
+      <label class="doble">Correo <span class="ayuda">Con el documento y este correo, el propietario activa su cuenta. Sin correo, la convocatoria es física.</span><input type="email" name="propietario_email"></label>
+    </div>
+    <div><button>Registrar unidad</button></div>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}<script>
+(function(){
+  const b=document.getElementById('copiar'), e=document.getElementById('enlace'); if(!b) return;
+  b.addEventListener('click', async()=>{
+    try{ await navigator.clipboard.writeText(e.value); }catch(err){ e.select(); document.execCommand('copy'); }
+    b.textContent='Enlace copiado'; setTimeout(()=>b.textContent='Copiar enlace',2000);
+  });
+})();
+</script>{% endblock %}

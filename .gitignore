@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Pruebas y cobertura
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Secretos y configuración local (usar .env.example como plantilla)
+.env
+.env.*
+!.env.example
+
+# Herramientas locales (asistentes, skills instaladas)
+.claude/
+.agents/
+skills-lock.json
+
+# Editores y sistema operativo
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Temporales de Office
+~$*
+*.tmp
+
+# Logs
+*.log

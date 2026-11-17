@@ -1,0 +1,29 @@
+{% extends "acceso.html" %}{% block titulo %}Registro de propietarios{% endblock %}{% block clase_acceso %}registro{% endblock %}
+{% block formulario %}
+{% if enviado %}
+<h1>Solicitud recibida</h1>
+<p class="sub">La administración de {{ conjunto.nombre }} revisará sus datos. Cuando los apruebe, podrá activar su cuenta con su documento y este correo en <a href="/activar">Activar mi cuenta</a>.</p>
+<p class="tenue">Si se equivocó en algún dato, acuda a la administración: la unidad ya tiene una solicitud en revisión y no recibe otra hasta que esta se resuelva.</p>
+{% else %}
+<h1>Registro de propietarios</h1>
+<p class="sub">{{ conjunto.nombre }}. Registre los datos del propietario o de la persona que lo representa ante la asamblea. Cada unidad tiene un solo representante; si es dueño de varias unidades, envíe una solicitud por cada una.</p>
+<form method="post" action="/registro/{{ token }}" class="pila">
+  {{ csrf_field }}
+  <label>Unidad
+    <select name="unidad_id" required data-mensaje-vacio="Seleccione su unidad.">
+      <option value="">Seleccione su unidad</option>
+      {% for u in unidades %}<option value="{{ u.id }}" {% if valores.unidad_id == u.id|string %}selected{% endif %}>{{ u.identificador }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Nombre completo <input name="nombre" required maxlength="120" autocomplete="name" value="{{ valores.nombre or '' }}"></label>
+  <div class="par">
+    <label>Documento de identidad <span class="ayuda">Solo números</span><input name="documento" required maxlength="15" inputmode="numeric" pattern="[0-9]+" data-mensaje="Escriba solo números, sin puntos ni espacios." value="{{ valores.documento or '' }}"></label>
+    <label>Teléfono <span class="ayuda">Opcional</span><input name="telefono" maxlength="20" inputmode="tel" autocomplete="tel" value="{{ valores.telefono or '' }}"></label>
+  </div>
+  <label>Correo electrónico <span class="ayuda">Con este correo activará su cuenta y recibirá la convocatoria</span><input type="email" name="email" required maxlength="120" autocomplete="email" data-mensaje="Escriba un correo con el formato nombre@dominio.com." value="{{ valores.email or '' }}"></label>
+  <label class="casilla"><input type="checkbox" name="autoriza" value="si" required data-mensaje-vacio="Debe autorizar el tratamiento de sus datos para enviar el formulario."> <span>Autorizo a la administración de {{ conjunto.nombre }} a tratar estos datos para convocarme y registrar mi participación en las asambleas (Ley 1581 de 2012).</span></label>
+  <button>Enviar solicitud</button>
+</form>
+<div class="cambio"><p class="tenue">Sus datos no cuentan para votar hasta que la administración los apruebe.</p></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "acceso.html" %}{% block titulo %}Iniciar sesión{% endblock %}
+{% block formulario %}
+<h1>Iniciar sesión</h1>
+<p class="sub">Ingrese con el correo registrado ante la administración de su conjunto.</p>
+<form method="post" action="/login" class="pila">
+  {{ csrf_field }}
+  <label>Correo electrónico <input type="email" name="email" required maxlength="120" autocomplete="username" autofocus></label>
+  <label>Contraseña <input type="password" name="password" required maxlength="128" autocomplete="current-password"></label>
+  <button>Iniciar sesión</button>
+</form>
+<div class="cambio">
+  <p>¿Es su primer ingreso? <a href="/activar">Activar mi cuenta</a></p>
+  <p class="tenue">Si olvidó su contraseña, pida a la administración del conjunto que la restablezca.</p>
+</div>
+{% endblock %}

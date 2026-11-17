@@ -1,0 +1,442 @@
+/* Dirección de diseño: docs/DESIGN.md
+   Paleta única en tema claro: la app se usa en salones iluminados y sus actas se imprimen. */
+:root{
+  color-scheme:light;
+  --papel:#F2F3EF;
+  --superficie:#FFFFFF;
+  --superficie-2:#FAFBF9;
+  --mesa:#E7EBE5;
+  --grafito:#1C2622;
+  --tenue:#56615C;
+  --linea:#D6DAD3;
+  --borde-campo:#7D8782;
+  --tinta:#1E4D3F;
+  --tinta-fuerte:#1E4D3F;
+  --tinta-fuerte-hover:#163A2F;
+  --tinta-clara:#E3EEE9;
+  --sello:#C8901A;
+  --sello-claro:#F6EAD0;
+  --sello-texto:#6F4E08;
+  --ladrillo:#9E3A2C;
+  --ladrillo-fuerte:#9E3A2C;
+  --ladrillo-fuerte-hover:#7F2D22;
+  --ladrillo-claro:#F6E4E0;
+  --lateral:#1E4D3F;
+  --sobre-lateral:#FFFFFF;
+  --tenue-lateral:#CFE0D8;
+  --quorum:#1E4D3F;
+  --sombra:rgb(28 38 34 / .45);
+  --velo:rgb(22 58 47 / .55);
+}
+
+@font-face{font-family:"Atkinson Hyperlegible";src:url("fuentes/atkinson-hyperlegible-latin-400-normal.woff2") format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Atkinson Hyperlegible";src:url("fuentes/atkinson-hyperlegible-latin-700-normal.woff2") format("woff2");font-weight:700;font-display:swap}
+@font-face{font-family:"Source Serif 4";src:url("fuentes/source-serif-4-latin-400-normal.woff2") format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Source Serif 4";src:url("fuentes/source-serif-4-latin-600-normal.woff2") format("woff2");font-weight:600;font-display:swap}
+
+:root{
+  --sans:"Atkinson Hyperlegible",system-ui,sans-serif;
+  --serif:"Source Serif 4",Georgia,serif;
+  --r-control:4px; --r-panel:8px;
+  --ancho-lateral:16.5rem;
+  accent-color:var(--tinta-fuerte);
+  scrollbar-color:var(--tenue) var(--mesa);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:var(--sans);font-size:1rem;line-height:1.5;color:var(--grafito);background:var(--papel)}
+::selection{background:var(--sello-claro);color:var(--grafito)}
+a{color:var(--tinta);text-underline-offset:3px;overflow-wrap:break-word}
+a:hover{color:var(--tinta-fuerte-hover)}
+:focus-visible{outline:3px solid var(--sello);outline-offset:2px}
+h1,h2,h3{line-height:1.2;margin:0;text-wrap:balance}
+/* Títulos de página con la letra del libro de actas: la app es la memoria de la copropiedad */
+h1{font-family:var(--serif);font-weight:600;font-size:clamp(1.85rem,1.45rem + 1.1vw,2.45rem);letter-spacing:-.01em}
+h2{font-size:1.15rem;font-weight:700}
+p{margin:0 0 .75rem}
+p,li{text-wrap:pretty}
+.tenue{color:var(--tenue)}
+.cifra{font-variant-numeric:tabular-nums}
+.oculto{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.visually-hidden:where(:not(:focus-within,:active)){position:absolute!important;clip-path:inset(50%)!important;overflow:hidden!important;width:1px!important;height:1px!important;margin:-1px!important;padding:0!important;border:0!important;white-space:nowrap!important}
+.saltar{position:absolute;left:-999px;top:8px;background:var(--superficie);color:var(--grafito);padding:8px 12px;z-index:30}
+.saltar:focus{left:8px}
+
+/* ------------------------------------------------------------ armazón: barra lateral + contenido
+   En escritorio la navegación es una barra lateral fija; en pantallas angostas el mismo elemento
+   es un cajón que se desliza (guía navigation-drawer, variante "también barra lateral"). */
+.app{min-height:100vh}
+.marca{display:flex;align-items:center;gap:10px;font-weight:700;color:inherit;text-decoration:none;white-space:nowrap}
+.marca svg{flex:none}
+.barra-movil{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;padding:0 16px;background:var(--lateral);color:var(--sobre-lateral)}
+.barra-movil .marca{color:var(--sobre-lateral)}
+.boton-menu{background:transparent;border-color:color-mix(in oklab,var(--sobre-lateral) 45%,transparent);color:var(--sobre-lateral)}
+.boton-menu:hover{background:color-mix(in oklab,var(--sobre-lateral) 12%,transparent);color:var(--sobre-lateral)}
+
+.Drawer-sheet{display:flex;flex-direction:column;gap:6px;background:var(--lateral);color:var(--sobre-lateral);padding:22px 16px 18px}
+.Drawer-sheet .marca{padding:6px 8px 18px;font-size:1.05rem;color:var(--sobre-lateral)}
+.cerrar-menu{align-self:flex-end;background:transparent;border-color:color-mix(in oklab,var(--sobre-lateral) 45%,transparent);color:var(--sobre-lateral)}
+.cerrar-menu:hover{background:color-mix(in oklab,var(--sobre-lateral) 12%,transparent);color:var(--sobre-lateral)}
+.nav{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.nav a{position:relative;display:flex;align-items:center;min-height:44px;padding:0 12px 0 16px;border-radius:var(--r-control);color:var(--tenue-lateral);text-decoration:none;font-weight:700}
+.nav a:hover{color:var(--sobre-lateral);background:color-mix(in oklab,var(--sobre-lateral) 9%,transparent)}
+/* Marca de la página actual: la misma barra ocre del medidor de quórum */
+.nav a[aria-current="page"]{color:var(--sobre-lateral);background:color-mix(in oklab,var(--sobre-lateral) 12%,transparent)}
+.nav a[aria-current="page"]::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:4px;border-radius:2px;background:var(--sello)}
+.cuenta-lateral{margin-top:auto;padding:16px 8px 0;border-top:1px solid color-mix(in oklab,var(--sobre-lateral) 18%,transparent);display:grid;gap:10px}
+.cuenta-lateral a{color:var(--sobre-lateral);text-decoration:none;display:grid;line-height:1.3}
+.cuenta-lateral a:hover strong{text-decoration:underline}
+.cuenta-lateral span{color:var(--tenue-lateral);font-size:.85rem}
+.cuenta-lateral button{width:100%;background:transparent;border-color:color-mix(in oklab,var(--sobre-lateral) 45%,transparent);color:var(--sobre-lateral)}
+.cuenta-lateral button:hover{background:color-mix(in oklab,var(--sobre-lateral) 12%,transparent);color:var(--sobre-lateral)}
+
+/* Escritorio: barra lateral siempre visible (anula los estilos de popover del cajón) */
+@media (width >= 65em){
+  .app{display:grid;grid-template-columns:var(--ancho-lateral) minmax(0,1fr)}
+  .barra-movil,.cerrar-menu{display:none}
+  /* La columna entera lleva el color; solo su contenido queda fijo al desplazar la página */
+  .Drawer{display:block;position:static;inset:auto;align-self:stretch;height:auto;width:auto;margin:0;padding:0;border:0;overflow:visible;background:var(--lateral);color:var(--sobre-lateral);view-transition-name:lateral}
+  .Drawer-scroller{position:sticky;top:0;height:100vh}
+  .Drawer-sheet{height:100%;overflow-y:auto}
+}
+/* Pantallas angostas: cajón deslizable con scroll-snap */
+@media (width < 65em){
+  .Drawer{
+    --drawer-width:min(20em,80dvw,100dvw - 24px);
+    --drawer-backdrop:0;
+    inset:0;width:auto;height:auto;max-width:none;max-height:none;margin:0;padding:0;
+    background:transparent;border:0;overflow:visible;color:var(--sobre-lateral)
+  }
+  .Drawer::backdrop{background:#000;opacity:calc(var(--drawer-backdrop) / 2)}
+  .Drawer-scroller{position:relative;display:grid;grid-template-columns:var(--drawer-width) 100%;overflow-x:scroll;overscroll-behavior:none;scrollbar-width:none;scroll-snap-type:x mandatory}
+  .Drawer-scroller::after{content:"";scroll-snap-align:end;scroll-initial-target:nearest}
+  .Drawer-sheet{height:100svh;overflow-y:auto;scroll-snap-align:start;scrollbar-width:none}
+}
+@media (width < 65em) and (prefers-reduced-motion:no-preference){.Drawer-scroller{scroll-behavior:smooth}}
+@supports (animation-timeline:scroll()){
+  @media (width < 65em){
+    .Drawer{timeline-scope:--drawer-fade;animation:fade-drawer-backdrop linear both;animation-timeline:--drawer-fade}
+    .Drawer-scroller{scroll-timeline:--drawer-fade x}
+  }
+  @property --drawer-backdrop{syntax:'<number>';inherits:true;initial-value:0}
+  @keyframes fade-drawer-backdrop{0%{--drawer-backdrop:1}100%{--drawer-backdrop:0}}
+}
+
+/* ------------------------------------------------------------ contenido */
+main{width:100%;max-width:1180px;margin:0 auto;padding:40px clamp(16px,3vw,44px) 72px}
+.cabecera{margin-bottom:28px;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px}
+.cabecera h1{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.datos{display:flex;flex-wrap:wrap;gap:4px 24px;margin:10px 0 0;padding:0;color:var(--tenue)}
+.datos div{display:flex;gap:6px}
+.datos dt{font-weight:700;color:var(--grafito)}
+.datos dd{margin:0}
+.volver{display:inline-block;margin-bottom:10px;font-size:.9rem}
+.seccion{margin-top:36px}
+.seccion > h2{margin-bottom:12px}
+.seccion > .tenue{margin-top:-6px}
+
+/* Panel de consulta (tablas) y panel de captura (formularios) */
+.hoja{background:var(--superficie);border:1px solid var(--linea);border-radius:var(--r-panel);overflow-x:auto;container-type:inline-size;max-block-size:min(80vh,56rem)}
+.mesa{background:var(--mesa);border-radius:var(--r-panel);padding:22px}
+.mesa > h2{margin-bottom:14px}
+.nota{font-size:.9rem;color:var(--tenue);margin:12px 0 0}
+
+/* ------------------------------------------------------------ tablas */
+table{width:100%;border-collapse:collapse;font-size:.95rem}
+th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--linea);vertical-align:middle}
+th{font-weight:700;font-size:.85rem;color:var(--tenue);background:var(--superficie)}
+.hoja thead th{position:sticky;inset-block-start:0;z-index:1}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--superficie-2)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td.acc{text-align:right;white-space:nowrap}
+td.acc > *{margin-left:6px}
+details.restablecer{display:inline-block;text-align:left;vertical-align:middle}
+details.restablecer summary{list-style:none}
+details.restablecer summary::-webkit-details-marker{display:none}
+details.restablecer[open]{display:block;margin-bottom:8px}
+details.restablecer form{margin-top:8px;justify-content:flex-end}
+details.restablecer input{width:200px}
+.vacio{padding:28px 14px;color:var(--tenue);text-align:center}
+.vacio a,.vacio strong{color:var(--grafito)}
+@container (width < 40rem){
+  .hoja table,.hoja tbody,.hoja tr,.hoja td{display:block}
+  .hoja thead{display:none}
+  .hoja tbody tr{padding:12px 4px;border-bottom:1px solid var(--linea)}
+  .hoja tbody tr:last-child{border-bottom:0}
+  .hoja td{border:0;padding:4px 14px;text-align:left}
+  .hoja td.num,.hoja td.acc{text-align:left}
+  .hoja td.acc > *{margin:6px 6px 0 0}
+  .hoja td[data-label]:not(.acc)::before{content:attr(data-label) ": ";font-weight:700;color:var(--tenue);font-size:.85rem}
+  .hoja td:first-child{font-size:1.05rem}
+  .hoja td.vacio{text-align:center}
+}
+
+/* ------------------------------------------------------------ formularios */
+form.fila{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
+form.fila label.ancho{flex:1 1 280px;min-width:0}
+form.pila{display:flex;flex-direction:column;gap:16px}
+form.inline{display:inline}
+label{display:flex;flex-direction:column;gap:6px;font-size:.9rem;font-weight:700}
+label .ayuda{font-weight:400;color:var(--tenue);font-size:.85rem}
+input,select,textarea{font:inherit;font-weight:400;font-size:1rem;color:var(--grafito);padding:10px 12px;min-height:44px;border:1px solid var(--borde-campo);border-radius:var(--r-control);background:var(--superficie);min-width:0}
+input::placeholder{color:var(--tenue)}
+input[type=file]{width:100%}
+input::file-selector-button{font:inherit;font-weight:700;margin-right:12px;padding:6px 12px;border:1px solid var(--tinta-fuerte);border-radius:var(--r-control);background:var(--superficie);color:var(--tinta);cursor:pointer}
+input:focus-visible,select:focus-visible{outline:3px solid var(--sello);outline-offset:0;border-color:var(--tinta)}
+select[multiple]{min-height:auto;padding:4px}
+.rejilla-campos{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.rejilla-campos .doble{grid-column:span 2}
+.rejilla-campos > label > :is(input,select){margin-top:auto}
+.par{display:grid;grid-template-columns:1fr 1fr;gap:16px;grid-template-rows:repeat(4,auto);row-gap:6px}
+.par > label{display:grid;grid-row:span 4;grid-template-rows:subgrid;row-gap:6px;align-content:start}
+.par > label > .ayuda{align-self:start}
+label.casilla{flex-direction:row;flex-wrap:wrap;align-items:flex-start;gap:10px;font-weight:400}
+label.casilla input{min-height:auto;width:20px;height:20px;margin-top:3px;flex:none}
+.enlace{display:flex;gap:10px;flex-wrap:wrap}
+.enlace input{flex:1 1 320px;font-size:.92rem}
+
+/* Select con la marca (guía branded-select-styling): solo con puntero fino, para conservar el
+   selector nativo en pantallas táctiles. Sin soporte, queda el select del sistema. */
+@media (pointer:fine){
+  select:not([multiple]),select:not([multiple])::picker(select){appearance:base-select}
+  select:not([multiple]){min-inline-size:12rem;cursor:pointer;display:flex;align-items:center}
+  select:not([multiple])::picker-icon{color:var(--tenue)}
+  select:not([multiple])::picker(select){margin-block:4px;padding:6px;border:1px solid var(--linea);border-radius:var(--r-panel);background:var(--superficie);color:var(--grafito);box-shadow:0 18px 40px -16px var(--sombra)}
+  select:not([multiple]) option{padding:8px 10px;border-radius:var(--r-control);cursor:pointer}
+  select:not([multiple]) option:hover,select:not([multiple]) option:focus-visible{background:var(--tinta-clara);outline:none}
+  select:not([multiple]) option:checked{font-weight:700}
+  select:not([multiple]) option::checkmark{color:var(--sello)}
+}
+
+/* Validación después de interactuar (:user-invalid): borde, fondo y texto, nunca solo color */
+:is(input:not([type=range]),select,textarea):user-invalid{border-color:var(--ladrillo);background:var(--ladrillo-claro)}
+label:has(:user-invalid){color:var(--ladrillo)}
+.error-campo{display:none;gap:6px;align-items:flex-start;font-size:.85rem;font-weight:700;color:var(--ladrillo)}
+:is(input,select,textarea):user-invalid ~ .error-campo,.clave:has(:user-invalid) ~ .error-campo{display:flex}
+.icono-error{flex:none;display:inline-grid;place-items:center;width:1.15em;height:1.15em;border-radius:50%;background:var(--ladrillo-fuerte);color:#fff;font-size:.8em;line-height:1;margin-top:.15em}
+label.casilla:has(:user-invalid){color:var(--ladrillo)}
+label.casilla .error-campo{flex-basis:100%;margin-left:30px}
+.clave{position:relative;display:block}
+.clave input{width:100%;padding-right:96px}
+.ver-clave{position:absolute;right:4px;top:4px;bottom:4px;min-height:0;padding:0 12px;font-size:.85rem;background:transparent;border-color:transparent;color:var(--tinta)}
+.ver-clave:hover{background:var(--tinta-clara);color:var(--tinta)}
+
+/* ------------------------------------------------------------ botones */
+button,.boton{font:inherit;font-weight:700;font-size:.95rem;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:var(--r-control);border:1px solid var(--tinta-fuerte);background:var(--tinta-fuerte);color:#fff;cursor:pointer;text-decoration:none;white-space:nowrap}
+button:hover,.boton:hover{background:var(--tinta-fuerte-hover);border-color:var(--tinta-fuerte-hover);color:#fff}
+.sec{background:var(--superficie);color:var(--tinta)}
+.sec:hover{background:var(--tinta-clara);color:var(--tinta)}
+.peligro{background:var(--ladrillo-fuerte);border-color:var(--ladrillo-fuerte)}
+.peligro:hover{background:var(--ladrillo-fuerte-hover);border-color:var(--ladrillo-fuerte-hover)}
+.discreto{background:transparent;border-color:transparent;color:var(--tenue);padding:0 10px}
+.discreto:hover{background:var(--mesa);border-color:transparent;color:var(--grafito)}
+.compacto{min-height:36px;padding:0 12px;font-size:.88rem}
+button:disabled{opacity:.5;cursor:not-allowed}
+button:disabled:hover{background:var(--tinta-fuerte)}
+.acciones{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+
+/* ------------------------------------------------------------ mensajes y estados */
+.aviso{display:flex;gap:12px;padding:12px 16px;border-radius:var(--r-control);margin-bottom:20px;border-left:4px solid}
+.aviso.ok{background:var(--tinta-clara);border-color:var(--tinta-fuerte)}
+.aviso.error{background:var(--ladrillo-claro);border-color:var(--ladrillo-fuerte)}
+.aviso.advertencia{background:var(--sello-claro);border-color:var(--sello)}
+.estado{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:var(--r-control);font-family:var(--sans);font-size:.82rem;font-weight:700;line-height:1.5;letter-spacing:0;background:var(--mesa);color:var(--grafito);white-space:nowrap}
+.estado::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.8}
+.estado.en_curso,.estado.abierto,.estado.aprobado,.estado.aprobada,.estado.activo{background:var(--tinta-clara);color:var(--tinta)}
+.estado.sin_quorum,.estado.rechazado,.estado.alterada{background:var(--ladrillo-claro);color:var(--ladrillo)}
+.estado.convocada,.estado.borrador,.estado.pendiente_activacion{background:var(--sello-claro);color:var(--sello-texto)}
+.estado.finalizada,.estado.cerrado,.estado.inactivo{color:var(--tenue)}
+
+/* ------------------------------------------------------------ quórum (elemento focal) */
+.quorum{background:var(--quorum);color:#fff;border-radius:var(--r-panel);padding:26px 30px;display:grid;grid-template-columns:auto 1fr;gap:8px 44px;align-items:center}
+.quorum .porcentaje{font-size:clamp(3rem,2rem + 4vw,4.75rem);font-weight:700;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.quorum .porcentaje small{font-size:.45em;font-weight:400;margin-left:4px}
+.quorum .que{font-size:.95rem;color:#CFE0D8;margin:6px 0 0}
+.quorum .medidor{position:relative;padding-top:30px}
+.quorum .pista{height:22px;background:rgb(255 255 255 / .14);border-radius:2px;overflow:hidden}
+.quorum .relleno{height:100%;background:var(--sello)}
+.quorum .umbral{position:absolute;left:50%;top:0;bottom:-6px;border-left:2px solid #fff}
+.quorum .umbral span{position:absolute;left:8px;top:0;font-size:.82rem;white-space:nowrap;color:#fff}
+.quorum .lectura{display:flex;flex-wrap:wrap;gap:6px 28px;margin-top:14px;font-size:.95rem}
+.quorum .lectura strong{font-variant-numeric:tabular-nums}
+.quorum .veredicto{font-weight:700}
+.quorum .veredicto.no{color:#F3C4BA}
+.quorum .ley{grid-column:1/-1;font-size:.82rem;color:#CFE0D8;margin:4px 0 0}
+
+/* ------------------------------------------------------------ panel de la asamblea
+   Barra de estado (como el statusbar del módulo de asambleas de Odoo), siguiente paso e indicadores. */
+.pasos{list-style:none;margin:0 0 20px;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.pasos li{display:flex;align-items:center;gap:8px;padding:8px 14px 8px 10px;border-radius:999px;background:var(--mesa);color:var(--tenue);font-size:.88rem;font-weight:700}
+.pasos .num{display:inline-grid;place-items:center;width:1.5rem;height:1.5rem;border-radius:50%;background:var(--superficie);color:var(--tenue);font-size:.8rem;font-variant-numeric:tabular-nums}
+.pasos li.hecho{background:var(--tinta-clara);color:var(--tinta)}
+.pasos li.hecho .num{background:var(--tinta-fuerte);color:#fff}
+.pasos li.actual{background:var(--tinta-fuerte);color:#fff}
+.pasos li.actual .num{background:var(--sello);color:#1C2622}
+.siguiente{background:var(--superficie);border:1px solid var(--linea);border-left:5px solid var(--sello);border-radius:var(--r-panel);padding:20px 24px;margin-bottom:24px}
+.siguiente .eti{margin:0 0 4px;font-size:.85rem;font-weight:700;color:var(--sello-texto)}
+.siguiente h2{font-family:var(--serif);font-weight:600;font-size:1.5rem;margin-bottom:6px}
+.siguiente p{max-width:70ch}
+.siguiente .acciones{margin-top:4px}
+.indicadores{display:grid;grid-template-columns:repeat(auto-fit,minmax(12rem,1fr));gap:12px;margin-bottom:24px}
+.indicadores > div{display:grid;align-content:start;gap:2px;padding:16px 18px;background:var(--superficie);border:1px solid var(--linea);border-radius:var(--r-panel)}
+.indicadores .valor{font-size:1.9rem;font-weight:700;line-height:1.1;color:var(--grafito)}
+.indicadores .nombre{font-weight:700;font-size:.9rem}
+.indicadores .detalle{font-size:.85rem;color:var(--tenue)}
+#participantes td:first-child strong,#participantes .estado{white-space:nowrap}
+#participantes td:first-child{white-space:nowrap}
+.copiar-enlace{padding-inline:0;min-height:32px}
+.pestanas{position:sticky;top:0;z-index:4;display:flex;flex-wrap:wrap;gap:4px;margin:0 0 18px;padding:8px 0;background:var(--papel);border-bottom:1px solid var(--linea)}
+.pestanas a{padding:8px 14px;border-radius:var(--r-control);color:var(--tenue);font-weight:700;text-decoration:none}
+.pestanas a:hover{background:var(--mesa);color:var(--grafito)}
+.otras-acciones{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid var(--linea)}
+.enlace-unidad{display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.enlace-unidad a{font-weight:700}
+.sala-publica main{max-width:960px}
+.sala-publica .barra-movil{display:flex;position:static}
+:target{scroll-margin-top:72px}
+.indicadores .destacado{border-color:var(--sello);box-shadow:inset 0 0 0 1px var(--sello)}
+
+/* ------------------------------------------------------------ inicio */
+.tareas{list-style:none;margin:0;padding:0;border-top:1px solid var(--linea)}
+.tareas li{border-bottom:1px solid var(--linea)}
+.tareas a{display:grid;grid-template-columns:1fr auto;gap:2px 24px;padding:18px 6px;text-decoration:none;color:var(--grafito)}
+.tareas a:hover{background:var(--superficie)}
+.tareas a:hover .titulo{text-decoration:underline}
+.tareas .titulo{font-size:1.1rem;font-weight:700}
+.tareas .desc{color:var(--tenue);grid-column:1}
+.tareas .ir{grid-row:1/3;grid-column:2;align-self:center;color:var(--tinta);font-weight:700}
+.tareas li.principal a{padding:24px 22px;background:var(--superficie);border-left:4px solid var(--sello)}
+.tareas li.principal .titulo{font-family:var(--serif);font-weight:600;font-size:1.45rem}
+.salas{margin-bottom:28px}
+.salas h2{margin-bottom:12px}
+
+/* ------------------------------------------------------------ acceso */
+.acceso{min-height:100vh;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr)}
+.acceso .lema{background:var(--lateral);color:var(--sobre-lateral);padding:48px clamp(24px,5vw,72px);display:flex;flex-direction:column;justify-content:space-between;gap:40px}
+.acceso .lema .marca{color:var(--sobre-lateral)}
+.acceso .lema blockquote{margin:0;font-family:var(--serif);font-size:clamp(1.6rem,1rem + 1.6vw,2.3rem);line-height:1.25;max-width:22ch;text-wrap:balance}
+.acceso .lema .ley{color:var(--tenue-lateral);font-size:.9rem;max-width:40ch}
+.acceso .lema .muestra{max-width:360px}
+.acceso .lema .muestra .pista{height:14px;background:rgb(255 255 255 / .14);border-radius:2px;position:relative}
+.acceso .lema .muestra .pista::before{content:"";position:absolute;inset:0 38% 0 0;background:var(--sello);border-radius:2px}
+.acceso .lema .muestra .pista::after{content:"";position:absolute;left:50%;top:-6px;bottom:-6px;border-left:2px solid var(--sobre-lateral)}
+.acceso .lema .muestra p{font-size:.85rem;color:var(--tenue-lateral);margin:10px 0 0}
+.acceso .formulario{display:flex;align-items:center;justify-content:center;padding:48px 24px}
+.acceso .formulario > div{width:100%;max-width:420px}
+.acceso h1{margin-bottom:6px}
+.acceso .sub{color:var(--tenue);margin-bottom:28px}
+.acceso .cambio{margin-top:28px;padding-top:20px;border-top:1px solid var(--linea)}
+.acceso.registro .formulario > div{max-width:520px}
+
+/* ------------------------------------------------------------ votación y sala virtual */
+.votacion{background:var(--superficie);border:1px solid var(--linea);border-radius:var(--r-panel);padding:24px;margin-bottom:24px}
+.votacion .punto{font-family:var(--serif);font-size:1.45rem;font-weight:600;line-height:1.3;margin:12px 0 4px;max-width:60ch;text-wrap:balance}
+.votacion .unidad{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 24px;padding:16px 0;border-top:1px solid var(--linea)}
+.votacion .unidad:first-of-type{margin-top:16px}
+.votacion .unidad .cual strong{font-size:1.1rem;display:block}
+.votos{display:flex;gap:10px;flex-wrap:wrap}
+.votos button{min-height:52px;min-width:120px;font-size:1rem}
+.votos .contra{background:var(--ladrillo-fuerte);border-color:var(--ladrillo-fuerte)}
+.votos .contra:hover{background:var(--ladrillo-fuerte-hover)}
+.espera{display:flex;align-items:center;gap:12px;color:var(--tenue);margin:16px 0 0}
+.espera::before{content:"";flex:none;width:10px;height:10px;border-radius:50%;background:var(--sello);animation:latido 1.6s ease-in-out infinite}
+@keyframes latido{50%{opacity:.25}}
+.ingreso{background:var(--superficie);border:1px solid var(--linea);border-left:4px solid var(--sello);border-radius:var(--r-panel);padding:24px;margin-bottom:24px}
+.ingreso h2{font-family:var(--serif);font-weight:600;font-size:1.5rem;margin-bottom:8px}
+.ingreso p{max-width:62ch}
+.ingreso button{min-height:52px;padding:0 28px;font-size:1.05rem}
+.orden-sala{margin:0;padding-left:1.4em}
+.orden-sala li{padding:8px 0;border-bottom:1px solid var(--linea)}
+.orden-sala li span:first-child{margin-right:8px}
+.conteo{display:grid;gap:12px;margin:18px 0 10px}
+.fila-conteo{display:grid;grid-template-columns:7rem 1fr 6rem;gap:14px;align-items:center}
+.fila-conteo .nombre{font-weight:700}
+.fila-conteo strong{text-align:right;font-size:1.3rem}
+.pista-conteo{height:20px;background:var(--mesa);border-radius:2px;overflow:hidden}
+.barra-conteo{height:100%}
+.barra-conteo.favor{background:var(--tinta-fuerte)}
+.barra-conteo.contra{background:var(--ladrillo-fuerte)}
+.barra-conteo.abst{background:var(--tenue)}
+.lectura-conteo{margin:6px 0 0;color:var(--tenue)}
+@media (prefers-reduced-motion:no-preference){.quorum .relleno,.barra-conteo{transition:width .6s ease}}
+@media (prefers-reduced-motion:reduce){.espera::before{animation:none}}
+
+/* ------------------------------------------------------------ acta (siempre en papel claro) */
+.integridad{display:flex;flex-wrap:wrap;gap:12px 28px;align-items:flex-start;background:var(--superficie);border:1px solid var(--linea);border-radius:var(--r-panel);padding:20px 24px}
+.integridad > div{flex:1 1 300px}
+.hash{font-family:ui-monospace,Consolas,monospace;font-size:.82rem;word-break:break-all;color:var(--tenue);margin:6px 0 0}
+.firmas{list-style:none;margin:8px 0 0;padding:0}
+.firmas li{padding:4px 0}
+/* El acta es un documento: se lee como papel también en tema oscuro (guía component-specific) */
+.documento{color-scheme:light;background:#FFFFFF;color:#1C2622;border:1px solid var(--linea);border-radius:2px;padding:clamp(24px,5vw,56px);max-width:820px;margin:28px auto 0}
+.documento pre{margin:0;white-space:pre-wrap;font-family:var(--serif);font-size:1.05rem;line-height:1.7}
+
+/* ------------------------------------------------------------ diálogos
+   Entrada y salida animadas (guía animate-to-from-top-layer). */
+dialog.confirmacion{max-width:min(32rem,calc(100vw - 32px));border:1px solid var(--linea);border-radius:var(--r-panel);padding:24px;color:var(--grafito);background:var(--superficie);box-shadow:0 24px 60px -18px var(--sombra)}
+dialog.confirmacion h2{font-family:var(--serif);font-weight:600;font-size:1.4rem;margin-bottom:8px}
+dialog.confirmacion .acciones{margin-top:20px;justify-content:flex-end}
+dialog.confirmacion .acciones.invertidas{flex-direction:row-reverse;justify-content:flex-start}
+dialog:modal{overscroll-behavior:contain}
+dialog::backdrop{overflow:hidden;overscroll-behavior:contain}
+dialog.confirmacion{opacity:0;transition-property:opacity,transform,display,overlay;transition-duration:.22s;transition-timing-function:ease-out;transition-behavior:allow-discrete}
+@media (prefers-reduced-motion:no-preference){dialog.confirmacion{transform:translateY(10px) scale(.98)}}
+:is(dialog.confirmacion[open]):where(:not([data-closing])){
+  opacity:1;
+  @starting-style{opacity:0}
+  @media (prefers-reduced-motion:no-preference){
+    transform:none;
+    @starting-style{transform:translateY(10px) scale(.98)}
+  }
+}
+dialog.confirmacion::backdrop{background-color:rgb(0 0 0 / 0);transition-property:background-color,display,overlay;transition-duration:.22s;transition-timing-function:ease-out;transition-behavior:allow-discrete}
+:is(dialog.confirmacion[open]):where(:not([data-closing]))::backdrop{background-color:var(--velo);@starting-style{background-color:rgb(0 0 0 / 0)}}
+@media (prefers-reduced-motion:reduce){dialog.confirmacion,dialog.confirmacion::backdrop{transition-duration:.08s}}
+
+/* ------------------------------------------------------------ transición entre páginas
+   Guía cross-document-transitions: el contenido aparece con un leve ascenso; la barra lateral,
+   con nombre propio, queda quieta. Sin soporte, la navegación es la de siempre. */
+@media (prefers-reduced-motion:no-preference){
+  @view-transition{navigation:auto}
+  ::view-transition-old(root){animation:.16s ease-in both vt-salida}
+  ::view-transition-new(root){animation:.28s ease-out both vt-entrada}
+}
+@keyframes vt-salida{to{opacity:0}}
+@keyframes vt-entrada{from{opacity:0;transform:translateY(10px)}}
+
+/* ------------------------------------------------------------ errores */
+.problema{max-width:620px;margin:48px auto;background:var(--superficie);border:1px solid var(--linea);border-left:4px solid var(--ladrillo-fuerte);border-radius:var(--r-panel);padding:28px}
+.problema h1{font-size:1.6rem;margin-bottom:10px}
+
+/* ------------------------------------------------------------ alto contraste del sistema (forced colors) */
+@media (forced-colors:active){
+  .quorum .pista,.pista-conteo{border:1px solid CanvasText}
+  .quorum .relleno,.barra-conteo{background:Highlight}
+  .estado,.aviso{border:1px solid CanvasText}
+  .nav a[aria-current="page"]::before{background:Highlight}
+}
+
+/* ------------------------------------------------------------ responsive */
+@media (width < 65em){
+  main{padding:24px 16px 48px}
+  .quorum{grid-template-columns:1fr;padding:20px}
+  .acceso{grid-template-columns:1fr}
+  .acceso .lema{padding:28px 20px;gap:20px}
+  .acceso .lema .muestra,.acceso .lema .ley{display:none}
+  .acceso .formulario{padding:32px 16px 48px;align-items:flex-start}
+  .rejilla-campos .doble{grid-column:auto}
+  .votos{width:100%}
+  .votos button{flex:1}
+  .tareas li.principal a{padding:20px 16px}
+}
+@media (width < 32.5em){.par{grid-template-columns:1fr;grid-template-rows:none;row-gap:16px}.par > label{grid-row:auto;grid-template-rows:none}}
+
+@media print{
+  .barra-movil,.Drawer,.no-imprimir,.aviso{display:none!important}
+  .app{display:block}
+  body{background:#fff;color:#000}
+  main{padding:0}
+  .documento{border:0;padding:0;margin:0;max-width:none}
+}

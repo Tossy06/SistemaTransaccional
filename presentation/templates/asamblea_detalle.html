@@ -1,0 +1,214 @@
+{% extends "base.html" %}{% block titulo %}Asamblea {{ asamblea.id }}{% endblock %}
+{% set es_admin = 'administrador' in usuario.roles %}
+{% set e = asamblea.estado %}
+{% set virtual = asamblea.modalidad != 'presencial' %}
+{% block contenido %}
+<a class="volver" href="/asambleas">Todas las asambleas</a>
+<div class="cabecera">
+  <div>
+    <h1>Asamblea {{ asamblea.tipo|etiqueta|lower }} n.º {{ asamblea.id }} {{ asamblea.estado|chip }}</h1>
+    <dl class="datos">
+      <div><dt>Conjunto</dt><dd>{{ asamblea.conjunto_nombre }}</dd></div>
+      <div><dt>Fecha</dt><dd class="cifra">{{ asamblea.fecha }} a las {{ asamblea.hora.strftime('%H:%M') }}</dd></div>
+      <div><dt>Modalidad</dt><dd>{{ asamblea.modalidad|etiqueta }}</dd></div>
+      {% if asamblea.lugar_modalidad %}<div><dt>Lugar</dt><dd>{{ asamblea.lugar_modalidad }}</dd></div>{% endif %}
+    </dl>
+  </div>
+  {% if e in ('convocada','en_curso') %}
+  <div class="acciones no-imprimir">
+    <a class="boton sec" href="/asambleas/{{ asamblea.id }}/asistencia">{{ 'Poderes y asistencia' if asamblea.modalidad == 'virtual' else 'Registrar asistencia' }}</a>
+    <a class="boton sec" href="/asambleas/{{ asamblea.id }}/en-vivo">Pantalla en vivo</a>
+  </div>
+  {% endif %}
+</div>
+
+<nav class="pestanas no-imprimir" aria-label="Secciones de la asamblea">
+  <a href="#resumen">Estado y acciones</a>
+  <a href="#orden">Orden del día</a>
+  <a href="#participantes">Participantes y enlaces</a>
+  {% if virtual and es_admin %}<a href="#sala">Sala virtual</a>{% endif %}
+</nav>
+
+{% if original %}<div class="aviso advertencia">Esta es la reunión de segunda convocatoria de la <a href="/asambleas/{{ original.id }}">asamblea n.º {{ original.id }}</a> (artículo 41). Sesiona con cualquier número plural de propietarios; los puntos del artículo 46 siguen exigiendo el 70 %.</div>{% endif %}
+
+{# ------------------------------------------------ barra de estado (como el statusbar del módulo de Odoo) #}
+{% set pasos = [('programada', 'Programada'), ('convocada', 'Convocada: ingreso abierto'), ('en_curso', 'En curso: votación'), ('finalizada', 'Finalizada'), ('acta', 'Acta aprobada')] %}
+{% set orden_estado = {'programada': 0, 'convocada': 1, 'en_curso': 2, 'finalizada': 3, 'sin_quorum': 1} %}
+{% set actual = 4 if (acta and acta.estado == 'aprobada') else orden_estado.get(e, 0) %}
+<ol class="pasos" id="resumen" aria-label="Estado de la asamblea">
+  {% for clave, texto in pasos %}
+  <li class="{{ 'hecho' if loop.index0 < actual else ('actual' if loop.index0 == actual else '') }}"{% if loop.index0 == actual %} aria-current="step"{% endif %}>
+    <span class="num">{{ loop.index }}</span>{{ 'Sin quórum' if (e == 'sin_quorum' and clave == 'convocada') else texto }}
+  </li>
+  {% endfor %}
+</ol>
+
+{# ------------------------------------------------ siguiente paso: la acción que toca ahora #}
+{% if es_admin %}
+<section class="siguiente no-imprimir" aria-labelledby="siguiente-titulo">
+  <p class="eti" id="siguiente-titulo">Siguiente paso</p>
+  {% if e == 'programada' and not asamblea.orden_del_dia_cerrado %}
+    <h2>Arme y cierre el orden del día</h2>
+    <p>Agregue los puntos abajo con su tipo de mayoría. Al cerrarlo ya no se pueden cambiar.</p>
+    <form method="post" action="/asambleas/{{ asamblea.id }}/cerrar-orden" class="acciones">{{ csrf_field }}
+      <button {% if not puntos %}disabled{% endif %} data-confirmar="¿Cerrar el orden del día?" data-detalle="Después no se pueden agregar ni quitar puntos.">Cerrar orden del día</button>
+      {% if not puntos %}<span class="tenue">Agregue al menos un punto.</span>{% endif %}
+    </form>
+  {% elif e == 'programada' %}
+    <h2>Genere la convocatoria</h2>
+    {% if antelacion.cumple %}
+    <p>Se crea una convocatoria por unidad{% if virtual %} con su enlace personal a la sala virtual{% endif %}. Desde ese momento se abre el ingreso.</p>
+    <form method="post" action="/asambleas/{{ asamblea.id }}/convocatoria" class="acciones">{{ csrf_field }}<button>Generar convocatoria</button></form>
+    {% else %}
+    <p class="aviso error" style="margin:0"><span>Una asamblea ordinaria se convoca con al menos {{ antelacion.minimo }} días de antelación y faltan {{ antelacion.dias }}. Programe una nueva asamblea con fecha posterior o como extraordinaria.</span></p>
+    {% endif %}
+  {% elif e == 'convocada' %}
+    <h2>Abra la asamblea cuando haya quórum</h2>
+    <p>{% if virtual %}Los propietarios ingresan por su enlace a la sala{% if asamblea.modalidad == 'mixta' %} y la recepción acredita a quienes llegan al salón{% endif %}{% else %}La recepción acredita a quienes llegan al salón{% endif %}. Para abrirla, los presentes deben superar el 50 % de los coeficientes{% if original %} (en segunda convocatoria basta con dos unidades){% endif %}.</p>
+    <form method="post" action="/asambleas/{{ asamblea.id }}/iniciar" class="acciones">{{ csrf_field }}
+      <button>Abrir la asamblea</button>
+      <span class="tenue cifra">Quórum actual: {{ '%.2f'|format(kpis.quorum) }} % con {{ kpis.ingresaron }} unidades</span>
+    </form>
+  {% elif e == 'en_curso' and punto_abierto %}
+    <h2>Punto {{ punto_abierto.orden }} en votación</h2>
+    <p>{{ punto_abierto.descripcion }}. Han votado {{ kpis.votos_punto_abierto }} de {{ kpis.ingresaron }} unidades presentes.</p>
+    <form method="post" action="/puntos/{{ punto_abierto.id }}/cerrar" class="acciones">{{ csrf_field }}
+      <button class="peligro" data-confirmar="¿Cerrar la votación del punto {{ punto_abierto.orden }} y contar los votos?" data-detalle="El resultado queda guardado y no se puede modificar. Los votos que lleguen después se rechazan.">Cerrar y contar</button>
+      <a class="boton sec" href="/asambleas/{{ asamblea.id }}/en-vivo">Ver votos en vivo</a>
+    </form>
+  {% elif e == 'en_curso' %}
+    {% set pendiente = puntos|selectattr('estado', 'equalto', 'pendiente')|first %}
+    {% if pendiente %}
+    <h2>Abra la votación del punto {{ pendiente.orden }}</h2>
+    <p>{{ pendiente.descripcion }} (mayoría {{ pendiente.tipo_mayoria|etiqueta|lower }}).</p>
+    <form method="post" action="/puntos/{{ pendiente.id }}/abrir" class="acciones">{{ csrf_field }}<button>Abrir votación</button></form>
+    {% else %}
+    <h2>Todos los puntos están votados</h2>
+    <p>Finalice la asamblea para generar el acta.</p>
+    <form method="post" action="/asambleas/{{ asamblea.id }}/finalizar" class="acciones">{{ csrf_field }}<button class="peligro" data-confirmar="¿Finalizar la asamblea?" data-detalle="Después no se pueden abrir más votaciones.">Finalizar asamblea</button></form>
+    {% endif %}
+  {% elif e == 'finalizada' and not acta %}
+    <h2>Genere el acta</h2>
+    <p>Se redacta con los asistentes, el quórum y los resultados, y se sella con su huella SHA-256.</p>
+    <form method="post" action="/asambleas/{{ asamblea.id }}/acta" class="acciones">{{ csrf_field }}<button>Generar acta</button></form>
+  {% elif acta %}
+    <h2>{{ 'Acta aprobada' if acta.estado == 'aprobada' else 'Acta pendiente de aprobación' }}</h2>
+    <p>{{ 'El presidente y el secretario aprobaron el acta.' if acta.estado == 'aprobada' else 'Deben aprobarla el presidente y el secretario desde su cuenta.' }}</p>
+    <div class="acciones"><a class="boton" href="/actas/{{ acta.id }}">Ver acta</a></div>
+  {% elif e == 'sin_quorum' %}
+    <h2>No hubo quórum</h2>
+    {% if segunda %}<p>La reunión de segunda convocatoria ya está programada.</p><div class="acciones"><a class="boton" href="/asambleas/{{ segunda.id }}">Ir a la segunda convocatoria (n.º {{ segunda.id }})</a></div>
+    {% else %}<p>Programe la reunión de segunda convocatoria: tercer día hábil a las 8:00 p. m., con el mismo orden del día.</p>
+    <form method="post" action="/asambleas/{{ asamblea.id }}/segunda-convocatoria" class="acciones">{{ csrf_field }}<button>Programar segunda convocatoria</button></form>{% endif %}
+  {% endif %}
+  {# Cambios de estado hacia atrás y eliminación, solo mientras nadie haya ingresado #}
+  {% set sin_ingresos = kpis.ingresaron == 0 %}
+  {% if (e == 'programada' and asamblea.orden_del_dia_cerrado) or (e == 'convocada' and sin_ingresos) or (e in ('programada','convocada') and sin_ingresos and not segunda) %}
+  <div class="otras-acciones">
+    <span class="tenue">Otras acciones:</span>
+    {% if e == 'programada' and asamblea.orden_del_dia_cerrado %}
+    <form method="post" action="/asambleas/{{ asamblea.id }}/reabrir-orden" class="inline">{{ csrf_field }}<button class="sec compacto">Reabrir orden del día</button></form>
+    {% endif %}
+    {% if e == 'convocada' and sin_ingresos %}
+    <form method="post" action="/asambleas/{{ asamblea.id }}/anular-convocatoria" class="inline">{{ csrf_field }}<button class="sec compacto" data-confirmar="¿Anular la convocatoria?" data-detalle="La asamblea vuelve a Programada y los enlaces de la sala dejan de funcionar.">Anular convocatoria</button></form>
+    {% endif %}
+    {% if e in ('programada','convocada') and sin_ingresos and not segunda %}
+    <form method="post" action="/asambleas/{{ asamblea.id }}/eliminar" class="inline">{{ csrf_field }}<button class="peligro compacto" data-confirmar="¿Eliminar la asamblea n.º {{ asamblea.id }}?" data-detalle="Se borran su orden del día, su convocatoria y sus enlaces. No se puede deshacer.">Eliminar asamblea</button></form>
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
+{# ------------------------------------------------ indicadores (como los contadores del módulo de Odoo) #}
+<section class="indicadores" aria-label="Indicadores de la asamblea">
+  <div><span class="valor cifra">{{ kpis.convocadas or kpis.unidades }}</span><span class="nombre">{{ 'Unidades convocadas' if kpis.convocadas else 'Unidades del conjunto' }}</span>{% if kpis.convocadas %}<span class="detalle">{{ kpis.entregadas }} con entrega confirmada</span>{% endif %}</div>
+  <div><span class="valor cifra">{{ kpis.ingresaron }}</span><span class="nombre">Ingresaron</span><span class="detalle">{{ kpis.presenciales }} en el salón, {{ kpis.virtuales }} por la sala, {{ kpis.por_poder }} por poder</span></div>
+  <div class="destacado"><span class="valor cifra">{{ '%.2f'|format(kpis.quorum) }} %</span><span class="nombre">Coeficiente presente</span><span class="detalle">{{ 'Hay quórum' if kpis.quorum > 50 else 'Se requiere más del 50 %' }}</span></div>
+  <div><span class="valor cifra">{{ kpis.puntos_cerrados }} de {{ kpis.puntos }}</span><span class="nombre">Puntos votados</span><span class="detalle">{% if punto_abierto %}Punto {{ punto_abierto.orden }} abierto: {{ kpis.votos_punto_abierto }} votos ({{ kpis.participacion }} %){% else %}Ningún punto abierto{% endif %}</span></div>
+</section>
+
+{% if e in ('convocada','en_curso','sin_quorum','finalizada') %}{% include "_quorum.html" %}{% endif %}
+
+{% if virtual and es_admin and e not in ('finalizada','sin_quorum') %}
+<section class="mesa seccion" id="sala">
+  <h2>Sala virtual</h2>
+  <p>{% if convocatorias %}Cada unidad tiene un enlace único (tabla de participantes). Quien lo abre entra directo a la sala de esa unidad, sin contraseña: confirma su ingreso, que cuenta para el quórum, y vota los puntos que usted abra. Envíe cada enlace solo a su propietario o apoderado; al registrar un poder, el enlace de esa unidad se renueva.{% else %}Los enlaces únicos de la sala se crean al generar la convocatoria.{% endif %}</p>
+  <form method="post" action="/asambleas/{{ asamblea.id }}/videollamada" class="fila">{{ csrf_field }}
+    <label class="ancho">Enlace de videollamada <span class="ayuda">Opcional, para el audio y video de la reunión (debe empezar por https://)</span><input type="url" name="enlace_videollamada" value="{{ asamblea.enlace_videollamada or '' }}" pattern="https://.*" placeholder="https://" data-mensaje="El enlace debe empezar por https://."></label>
+    <button class="sec">Guardar enlace</button>
+  </form>
+  {% if convocatorias %}<div class="acciones" style="margin-top:14px"><a class="boton sec" href="/asambleas/{{ asamblea.id }}/enlaces.csv">Descargar enlaces de todas las unidades (.csv)</a></div>{% endif %}
+</section>
+{% endif %}
+
+<section class="seccion" id="orden">
+  <h2>Orden del día {% if asamblea.orden_del_dia_cerrado %}<span class="estado cerrado">Cerrado</span>{% endif %}</h2>
+  <div class="hoja" tabindex="0" role="region" aria-label="Orden del día">
+    <table>
+      <thead><tr><th class="num">Punto</th><th>Descripción</th><th>Mayoría</th><th>Estado</th><th>Resultado</th>{% if es_admin %}<th><span class="oculto">Acciones</span></th>{% endif %}</tr></thead>
+      <tbody>
+      {% for p in puntos %}{% set r = resultados.get(p.id) %}
+      <tr>
+        <td class="num">{{ p.orden }}</td><td>{{ p.descripcion }}</td><td>{{ p.tipo_mayoria|etiqueta }}</td><td>{{ p.estado|chip }}</td>
+        <td>{% if r %}{{ r.resultado|chip }}<br><span class="tenue cifra">A favor {{ r.total_a_favor }}, en contra {{ r.total_en_contra }}, abstención {{ r.total_abstencion }}</span>{% else %}<span class="tenue">Sin votar</span>{% endif %}</td>
+        {% if es_admin %}<td class="acc">
+          {% if not asamblea.orden_del_dia_cerrado %}
+            <form method="post" action="/puntos/{{ p.id }}/eliminar" class="inline">{{ csrf_field }}<button class="discreto compacto">Quitar</button></form>
+          {% elif e == 'en_curso' and p.estado == 'pendiente' and not punto_abierto %}
+            <form method="post" action="/puntos/{{ p.id }}/abrir" class="inline">{{ csrf_field }}<button class="compacto">Abrir votación</button></form>
+          {% elif p.estado == 'abierto' %}
+            <form method="post" action="/puntos/{{ p.id }}/cerrar" class="inline">{{ csrf_field }}<button class="peligro compacto" data-confirmar="¿Cerrar la votación del punto {{ p.orden }} y contar los votos?" data-detalle="El resultado queda guardado y no se puede modificar. Los votos que lleguen después se rechazan.">Cerrar y contar</button></form>
+          {% endif %}
+        </td>{% endif %}
+      </tr>
+      {% else %}<tr><td colspan="6" class="vacio">El orden del día está vacío.{% if es_admin and not asamblea.orden_del_dia_cerrado %} Agregue el primer punto abajo.{% endif %}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if es_admin and not asamblea.orden_del_dia_cerrado %}
+  <div class="mesa" style="margin-top:16px">
+    <form method="post" action="/asambleas/{{ asamblea.id }}/puntos" class="fila">{{ csrf_field }}
+      <label class="ancho">Descripción del punto <input name="descripcion" required></label>
+      <label>Tipo de mayoría <select name="tipo_mayoria" required><option value="">Seleccione</option><option value="simple">Simple (art. 45)</option><option value="calificada_70">Calificada 70 % (art. 46)</option></select></label>
+      <button>Agregar punto</button>
+    </form>
+  </div>
+  {% endif %}
+</section>
+
+{# ------------------------------------------------ participantes: quién es, cómo entra y qué hizo #}
+<section class="seccion" id="participantes">
+  <h2>Participantes <span class="tenue cifra" style="font-weight:400">({{ participantes|length }} unidades)</span></h2>
+  <p class="tenue">Quién representa cada unidad{% if virtual and convocatorias %}, su enlace único de ingreso a la sala{% endif %}, su cuenta (si tiene), si ya ingresó y su voto en el punto abierto.</p>
+  <div class="hoja" tabindex="0" role="region" aria-label="Participantes de la asamblea">
+    <table>
+      <thead><tr><th>Unidad</th><th>Representante</th><th>{{ 'Enlace de ingreso y cuenta' if virtual else 'Cuenta' }}</th><th>Ingreso</th><th>{{ 'Voto punto ' ~ punto_abierto.orden if punto_abierto else 'Voto' }}</th>{% if es_admin and convocatorias %}<th>Convocatoria</th>{% endif %}</tr></thead>
+      <tbody>
+      {% for u in participantes %}
+      {% set cuenta = u.cuenta_apoderado if u.apoderado_nombre else u.cuenta_propietario %}
+      <tr>
+        <td><strong>{{ u.identificador }}</strong><br><span class="tenue cifra">Coef. {{ u.coeficiente_copropiedad }}</span></td>
+        <td>{% if u.apoderado_nombre %}{{ u.apoderado_nombre }}<br><span class="tenue">Apoderado de {{ u.propietario_nombre }}</span>{% else %}{{ u.propietario_nombre }}<br><span class="tenue">Propietario</span>{% endif %}</td>
+        <td>{% if virtual and u.token_acceso and es_admin %}<div class="enlace-unidad"><a href="/sala/{{ u.token_acceso }}" target="_blank" rel="noopener" class="cifra" title="Enlace único de {{ u.identificador }}">/sala/{{ u.token_acceso[:10] }}…</a><button type="button" class="discreto compacto copiar-enlace" data-enlace="{{ request.base_url }}sala/{{ u.token_acceso }}" aria-label="Copiar enlace de la sala de {{ u.identificador }}">Copiar</button></div>{% endif %}
+          {% if cuenta %}<span class="tenue">Cuenta: {{ cuenta }}</span>{% else %}<span class="tenue">Sin cuenta</span>{% endif %}</td>
+        <td>{% if u.tipo_asistencia %}<span class="estado aprobado">{{ {'presencial': 'En el salón', 'virtual': 'Por la sala', 'poder': 'Por poder'}[u.tipo_asistencia] }}</span><br><span class="tenue cifra">{{ u.hora_registro.strftime('%H:%M') }}</span>
+            {% else %}<span class="estado inactivo">No ha ingresado</span>{% endif %}</td>
+        <td>{% if u.voto_punto_abierto %}<span class="estado aprobado">{{ u.voto_punto_abierto|etiqueta }}</span>{% elif punto_abierto and u.tipo_asistencia %}<span class="estado borrador">Pendiente</span>{% else %}<span class="tenue">No aplica</span>{% endif %}</td>
+        {% if es_admin and convocatorias %}<td>{% if not u.convocatoria_id %}<span class="tenue">No convocada</span>{% elif u.confirmado_entrega %}<span class="tenue">{{ u.medio|etiqueta }}, entregada</span>{% else %}<form method="post" action="/convocatorias/{{ u.convocatoria_id }}/confirmar" class="inline">{{ csrf_field }}<button class="sec compacto">Confirmar entrega</button></form>{% endif %}</td>{% endif %}
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}{% include "_quorum_js.html" %}
+<script>
+document.querySelectorAll('.copiar-enlace').forEach((b) => b.addEventListener('click', async () => {
+  const texto = b.textContent;
+  try { await navigator.clipboard.writeText(b.dataset.enlace); b.textContent = 'Enlace copiado'; }
+  catch (e) { prompt('Copie el enlace:', b.dataset.enlace); }
+  setTimeout(() => { b.textContent = texto; }, 2000);
+}));
+</script>{% endblock %}

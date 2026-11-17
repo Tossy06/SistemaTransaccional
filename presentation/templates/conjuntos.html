@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% block titulo %}Conjuntos{% endblock %}
+{% block contenido %}
+<div class="cabecera"><h1>Conjuntos residenciales</h1></div>
+<div class="hoja" tabindex="0" role="region" aria-label="Conjuntos residenciales">
+  <table>
+    <thead><tr><th>Nombre</th><th>NIT</th><th>Ciudad</th><th class="num">Unidades</th><th class="num">Coeficiente total</th><th><span class="oculto">Acciones</span></th></tr></thead>
+    <tbody>
+    {% for c in conjuntos %}<tr><td><a href="/conjuntos/{{ c.id }}">{{ c.nombre }}</a></td><td class="cifra">{{ c.nit }}</td><td>{{ c.ciudad or '' }}</td><td class="num">{{ c.numero_unidades }}</td><td class="num">{{ c.coeficiente_total }}</td>
+    <td class="acc"><a class="boton sec compacto" href="/conjuntos/{{ c.id }}">Ver unidades</a></td></tr>
+    {% else %}<tr><td colspan="6" class="vacio">No hay conjuntos registrados. Registre el primero abajo.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+<section class="mesa seccion">
+  <h2>Registrar conjunto</h2>
+  <form method="post" action="/conjuntos" class="pila">{{ csrf_field }}
+    <div class="rejilla-campos">
+      <label class="doble">Nombre <input name="nombre" required></label>
+      <label>NIT <input name="nit" required></label>
+      <label>Ciudad <input name="ciudad"></label>
+      <label class="doble">Dirección <input name="direccion"></label>
+      <label>Número de unidades <input type="number" name="numero_unidades" min="1" inputmode="numeric"></label>
+      <label>Coeficiente total <input name="coeficiente_total" value="100" inputmode="decimal"></label>
+    </div>
+    <div><button>Registrar conjunto</button></div>
+  </form>
+</section>
+{% endblock %}

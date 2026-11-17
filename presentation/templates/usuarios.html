@@ -1,0 +1,58 @@
+{% extends "base.html" %}{% block titulo %}Usuarios{% endblock %}
+{% block contenido %}
+<div class="cabecera">
+  <div>
+    <h1>Usuarios</h1>
+  </div>
+</div>
+
+<div class="hoja" tabindex="0" role="region" aria-label="Usuarios del sistema">
+  <table>
+    <thead><tr><th>Usuario</th><th>Documento</th><th>Roles <span class="tenue" style="font-weight:400">(Ctrl o Cmd para varios)</span></th><th>Estado</th><th><span class="oculto">Acciones</span></th></tr></thead>
+    <tbody>
+    {% for u in usuarios %}
+    <tr>
+      <td><strong>{{ u.nombre }}</strong><br><span class="tenue">{{ u.email }}</span></td>
+      <td class="cifra">{{ u.documento }}</td>
+      <td>
+        <form method="post" action="/usuarios/{{ u.id }}/roles" class="acciones">{{ csrf_field }}
+          <select name="roles" multiple size="2" aria-label="Roles de {{ u.nombre }}">{% for r in roles %}<option value="{{ r.id }}" {% if r.nombre in u.roles %}selected{% endif %}>{{ r.nombre }}</option>{% endfor %}</select>
+          <button class="sec compacto">Guardar roles</button>
+        </form>
+      </td>
+      <td>{% if u.activo %}<span class="estado activo">Activo</span>{% else %}<span class="estado pendiente_activacion">Inactivo</span>{% endif %}</td>
+      <td class="acc">
+        <details class="restablecer">
+          <summary class="boton discreto compacto">Restablecer contraseña</summary>
+          <form method="post" action="/usuarios/{{ u.id }}/password" class="acciones">{{ csrf_field }}
+            <input type="password" name="password" required minlength="8" maxlength="128" autocomplete="new-password" aria-label="Contraseña nueva para {{ u.nombre }}" placeholder="Contraseña nueva">
+            <button class="compacto">Guardar</button>
+          </form>
+        </details>
+        <form method="post" action="/usuarios/{{ u.id }}/activo" class="inline">{{ csrf_field }}
+          <input type="hidden" name="activo" value="{{ '0' if u.activo else '1' }}">
+          <button class="{{ 'discreto' if u.activo else '' }} compacto" {% if u.activo %}data-confirmar="¿Desactivar a {{ u.nombre }}?" data-detalle="No podrá iniciar sesión hasta que la administración lo active de nuevo."{% endif %}>{{ 'Desactivar' if u.activo else 'Activar' }}</button></form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<section class="mesa seccion">
+  <h2>Crear usuario</h2>
+  <form method="post" action="/usuarios" class="pila">{{ csrf_field }}
+    <div class="rejilla-campos">
+      <label class="doble">Nombre <input name="nombre" required maxlength="120"></label>
+      <label class="doble">Correo <input type="email" name="email" required maxlength="120"></label>
+      <label>Documento <input name="documento" required maxlength="20" inputmode="numeric"></label>
+      <label>Teléfono <input name="telefono" maxlength="20" inputmode="tel"></label>
+      <label>Contraseña inicial <span class="ayuda">8 caracteres o más, con letras y números</span><input type="password" name="password" required minlength="8" autocomplete="new-password" pattern="(?=.*[A-Za-z])(?=.*\d).{8,}" data-mensaje="Use 8 caracteres o más, con letras y números."></label>
+      <label>Roles <span class="ayuda">Ctrl o Cmd para elegir varios</span>
+        <select name="roles" multiple size="4" required>{% for r in roles %}<option value="{{ r.id }}">{{ r.nombre }}</option>{% endfor %}</select>
+      </label>
+    </div>
+    <div><button>Crear usuario</button></div>
+  </form>
+</section>
+{% endblock %}

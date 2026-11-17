@@ -1,0 +1,18 @@
+<section class="quorum" id="panel-quorum" data-asamblea="{{ asamblea.id }}" aria-labelledby="q-titulo">
+  <div>
+    <h2 id="q-titulo" class="que" style="margin:0 0 6px;font-weight:400">Quórum en tiempo real</h2>
+    <div class="porcentaje"><span id="q-porc">{{ '%.2f'|format(quorum.porcentaje|float) }}</span><small>%</small></div>
+    <p class="que">de los coeficientes, presentes o representados</p>
+  </div>
+  <div>
+    <div class="medidor">
+      <div class="umbral"><span>Mínimo legal: más del 50 %</span></div>
+      <div class="pista" role="meter" aria-label="Coeficientes presentes" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ quorum.porcentaje }}" id="q-medidor"><div class="relleno" id="q-barra" style="width:{{ [quorum.porcentaje|float, 100]|min }}%"></div></div>
+    </div>
+    <div class="lectura">
+      <span><strong id="q-unid">{{ quorum.unidades_presentes }}</strong> unidades acreditadas</span>
+      <span class="veredicto {{ '' if quorum.hay_quorum else 'no' }}" id="q-estado" aria-live="polite">{{ 'Hay quórum para deliberar' if quorum.hay_quorum else 'Aún no hay quórum' }}</span>
+    </div>
+  </div>
+  <p class="ley">Artículo 45, Ley 675 de 2001. Se actualiza cada 5 segundos.</p>
+</section>
